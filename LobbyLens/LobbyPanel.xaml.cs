@@ -1,0 +1,262 @@
+using System;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Collections.Generic;
+using Hearthstone_Deck_Tracker.API;
+using Hearthstone_Deck_Tracker.Utility.Extensions;
+
+namespace LobbyLens
+{
+    public partial class LobbyPanel : UserControl
+    {
+        public const double MinScale = 0.5;
+        public const double MaxScale = 3.0;
+
+        private static readonly Brush NormalBrush = new SolidColorBrush(Color.FromRgb(0xE8, 0xE3, 0xE3));
+        private static readonly Brush RatingBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF));
+        private static readonly Brush DimBrush = new SolidColorBrush(Color.FromRgb(0x8C, 0x91, 0x95));
+        private static readonly Brush DeadBrush = new SolidColorBrush(Color.FromRgb(0x8C, 0x88, 0x88));
+        private static readonly Brush DividerBrush = new SolidColorBrush(Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
+
+        private bool isFirst = true;
+        private bool isChange = false;
+        private bool isDragging = false;
+        private Point originalGridPosition;
+        private Point originalMousePosition;
+
+        public LobbyPanel()
+        {
+            InitializeComponent();
+            Visibility = Visibility.Hidden;
+            if (Settings.Instance.ifLoad)
+            {
+                RootGrid.Margin = new Thickness(Settings.Instance.positionLeft, Settings.Instance.positionTop, 0.0, 0.0);
+                isFirst = false;
+            }
+            ApplyAppearance();
+            Settings.Changed += ApplyAppearance;
+            Core.OverlayCanvas.Children.Add(this);
+            OverlayExtensions.SetIsOverlayHitTestVisible(PanelBorder, true);
+            OverlayExtensions.SetIsOverlayHitTestVisible(CloseButton, true);
+            OverlayExtensions.SetIsOverlayHitTestVisible(MinimizeButton, true);
+        }
+
+        private void ApplyAppearance()
+        {
+            double scale = Math.Max(MinScale, Math.Min(Settings.Instance.scaleRatio, MaxScale));
+            RootScale.ScaleX = scale;
+            RootScale.ScaleY = scale;
+            RootGrid.Opacity = Settings.Instance.opacity;
+        }
+
+        // Reset position/scale to first-run defaults (invoked from the settings window).
+        public void ResetLayout()
+        {
+            Settings.Instance.scaleRatio = Math.Max(MinScale, Math.Min(Core.OverlayWindow.Width / 1920.0, 2.0));
+            RootGrid.Margin = new Thickness(0.0, 0.0, 0.0, 0.0);
+            ApplyAppearance();
+            isChange = true;
+            LensLog.Debug("panel layout reset to defaults");
+        }
+
+        public void HidePanel()
+        {
+            Visibility = Visibility.Hidden;
+        }
+
+        public void DisplayLines(List<RankLine> lines)
+        {
+            if (isFirst)
+            {
+                Settings.Instance.scaleRatio = Math.Max(MinScale, Math.Min(Core.OverlayWindow.Width / 1920.0, 2.0));
+                isFirst = false;
+            }
+
+            ApplyAppearance();
+            RowsHost.Children.Clear();
+            foreach (RankLine line in lines)
+            {
+                RowsHost.Children.Add(BuildRow(line));
+            }
+
+            if (RowsHost.Visibility != Visibility.Visible)
+            {
+                // The minimize button collapses the rows; restore on fresh content so a
+                // minimized panel can never silently swallow a new match's display.
+                LensLog.Debug("rows were minimized — restoring for new display");
+                RowsHost.Visibility = Visibility.Visible;
+            }
+            Visibility = Visibility.Visible;
+            SetPosition(RootGrid.Margin.Left, RootGrid.Margin.Top);
+            LensLog.Debug($"render: {lines.Count} rows, pos=({RootGrid.Margin.Left:F0},{RootGrid.Margin.Top:F0}), scale={RootScale.ScaleX:F2}");
+        }
+
+        private FrameworkElement BuildRow(RankLine line)
+        {
+            if (line.Divider)
+            {
+                return new Border
+                {
+                    Height = 1,
+                    Background = DividerBrush,
+                    Margin = new Thickness(0, 4, 0, 4),
+                    SnapsToDevicePixels = true
+                };
+            }
+
+            Grid row = new Grid { Margin = new Thickness(0, 1, 0, 1) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            TextBlock left = new TextBlock
+            {
+                Text = line.Text,
+                Foreground = line.Dead ? DeadBrush : (line.Dim ? DimBrush : NormalBrush),
+                FontSize = Settings.Instance.fontSize,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            if (line.Dim) { left.FontStyle = FontStyles.Italic; }
+            if (line.Dead) { left.TextDecorations = TextDecorations.Strikethrough; }
+            row.Children.Add(left);
+
+            if (!string.IsNullOrEmpty(line.Right))
+            {
+                TextBlock right = new TextBlock
+                {
+                    FontSize = Settings.Instance.fontSize,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(14, 0, 0, 0)
+                };
+                Run rating = new Run(line.Right)
+                {
+                    Foreground = line.Dead ? DeadBrush : RatingBrush,
+                    FontWeight = FontWeights.SemiBold
+                };
+                if (line.Dead) { rating.TextDecorations = TextDecorations.Strikethrough; }
+                right.Inlines.Add(rating);
+                if (!string.IsNullOrEmpty(line.RightDim))
+                {
+                    Run rank = new Run("  " + line.RightDim)
+                    {
+                        Foreground = DimBrush,
+                        FontSize = Math.Max(10.0, Settings.Instance.fontSize - 4.0)
+                    };
+                    if (line.Dead) { rank.TextDecorations = TextDecorations.Strikethrough; }
+                    right.Inlines.Add(rank);
+                }
+                Grid.SetColumn(right, 1);
+                row.Children.Add(right);
+            }
+
+            if (!string.IsNullOrEmpty(line.Sub) || !string.IsNullOrEmpty(line.Sub2))
+            {
+                StackPanel cell = new StackPanel();
+                cell.Children.Add(row);
+                if (!string.IsNullOrEmpty(line.Sub))
+                {
+                    cell.Children.Add(new TextBlock
+                    {
+                        Text = line.Sub,
+                        Foreground = DimBrush,
+                        FontSize = Math.Max(10.0, Settings.Instance.fontSize - 5.0),
+                        Margin = new Thickness(10, -1, 0, 0)
+                    });
+                }
+                if (!string.IsNullOrEmpty(line.Sub2))
+                {
+                    cell.Children.Add(new TextBlock
+                    {
+                        Text = line.Sub2,
+                        Foreground = DimBrush,
+                        FontSize = Math.Max(10.0, Settings.Instance.fontSize - 6.0),
+                        Margin = new Thickness(10, 0, 0, 2)
+                    });
+                }
+                return cell;
+            }
+
+            return row;
+        }
+
+        public void Clean(bool save)
+        {
+            Settings.Changed -= ApplyAppearance;
+            if (save && isChange)
+            {
+                Settings.Instance.scaleRatio = RootScale.ScaleX;
+                Settings.Instance.positionLeft = RootGrid.Margin.Left;
+                Settings.Instance.positionTop = RootGrid.Margin.Top;
+                Settings.Instance.ifLoad = true;
+                Settings.Save();
+            }
+            Core.OverlayCanvas.Children.Remove(this);
+        }
+
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            Visibility = Visibility.Hidden;
+        }
+
+        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            RowsHost.Visibility = RowsHost.IsVisible ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        private void PanelBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            isDragging = true;
+            originalMousePosition = e.GetPosition(this);
+            originalGridPosition = new Point(RootGrid.Margin.Left, RootGrid.Margin.Top);
+        }
+
+        private void PanelBorder_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            isDragging = false;
+        }
+
+        private void PanelBorder_MouseLeave(object sender, MouseEventArgs e)
+        {
+            isDragging = false;
+        }
+
+        private void PanelBorder_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (isDragging)
+            {
+                Point currentPosition = e.GetPosition(this);
+                double offsetX = currentPosition.X - originalMousePosition.X;
+                double offsetY = currentPosition.Y - originalMousePosition.Y;
+
+                SetPosition(originalGridPosition.X + offsetX, originalGridPosition.Y + offsetY);
+                isChange = true;
+            }
+        }
+
+        private void PanelBorder_MouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            double newRatio = RootScale.ScaleX;
+
+            if (e.Delta > 0) { newRatio -= 0.1; }
+            else if (e.Delta < 0) { newRatio += 0.1; }
+
+            newRatio = Math.Max(MinScale, Math.Min(newRatio, MaxScale));
+
+            Settings.Instance.scaleRatio = newRatio;
+            ApplyAppearance();
+            isChange = true;
+        }
+
+        private void SetPosition(double nowLeft, double nowTop)
+        {
+            double w = PanelBorder.ActualWidth > 0 ? PanelBorder.ActualWidth : 190;
+            double h = PanelBorder.ActualHeight > 0 ? PanelBorder.ActualHeight : 100;
+            double newLeft = Math.Max(0.0, Math.Min(nowLeft, Core.OverlayWindow.Width - (w * RootScale.ScaleX)));
+            double newTop = Math.Max(0.0, Math.Min(nowTop, Core.OverlayWindow.Height - (h * RootScale.ScaleX)));
+            RootGrid.Margin = new Thickness(newLeft, newTop, 0.0, 0.0);
+        }
+    }
+}

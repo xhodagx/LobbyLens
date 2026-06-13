@@ -1,0 +1,106 @@
+using System;
+using System.Windows;
+
+namespace LobbyLens
+{
+    public partial class SettingsWindow : Window
+    {
+        private readonly Action onResetLayout;
+        private bool ready = false;
+
+        public SettingsWindow(Action onResetLayout)
+        {
+            InitializeComponent();
+            this.onResetLayout = onResetLayout;
+
+            FontSlider.Value = Settings.Instance.fontSize;
+            OpacitySlider.Value = Settings.Instance.opacity;
+            ScaleSlider.Value = Math.Max(0.5, Math.Min(Settings.Instance.scaleRatio, 3.0));
+            SortByPlaceBox.IsChecked = Settings.Instance.sortByPlace;
+            BestFirstBox.IsChecked = Settings.Instance.bestFirst;
+            DebugBox.IsChecked = Settings.Instance.debugLog;
+            RankNumbersBox.IsChecked = Settings.Instance.showRankNumbers;
+            HeroInfoBox.IsChecked = Settings.Instance.showHeroInfo;
+            CompsBox.IsChecked = Settings.Instance.showComps;
+            EliminationsBox.IsChecked = Settings.Instance.showEliminations;
+            UpdateLabels();
+
+            ready = true;
+            Closing += (s, e) => Settings.Save();
+        }
+
+        private void UpdateLabels()
+        {
+            FontLabel.Text = $"Font size: {(int)FontSlider.Value}";
+            OpacityLabel.Text = $"Opacity: {(int)(OpacitySlider.Value * 100)}%";
+            ScaleLabel.Text = $"Panel scale: {ScaleSlider.Value:F2}×";
+        }
+
+        private void FontSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (!ready) { return; }
+            Settings.Instance.fontSize = FontSlider.Value;
+            UpdateLabels();
+            Settings.NotifyChanged();
+        }
+
+        private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (!ready) { return; }
+            Settings.Instance.opacity = OpacitySlider.Value;
+            UpdateLabels();
+            Settings.NotifyChanged();
+        }
+
+        private void ScaleSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (!ready) { return; }
+            Settings.Instance.scaleRatio = ScaleSlider.Value;
+            UpdateLabels();
+            Settings.NotifyChanged();
+        }
+
+        private void SortByPlaceBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!ready) { return; }
+            Settings.Instance.sortByPlace = SortByPlaceBox.IsChecked == true;
+            Settings.NotifyChanged();
+        }
+
+        private void BestFirstBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!ready) { return; }
+            Settings.Instance.bestFirst = BestFirstBox.IsChecked == true;
+            Settings.NotifyChanged();
+        }
+
+        private void DebugBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!ready) { return; }
+            Settings.Instance.debugLog = DebugBox.IsChecked == true;
+            LensLog.SetDebug(Settings.Instance.debugLog);
+            Settings.NotifyChanged();
+        }
+
+        private void FeatureBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!ready) { return; }
+            Settings.Instance.showRankNumbers = RankNumbersBox.IsChecked == true;
+            Settings.Instance.showHeroInfo = HeroInfoBox.IsChecked == true;
+            Settings.Instance.showComps = CompsBox.IsChecked == true;
+            Settings.Instance.showEliminations = EliminationsBox.IsChecked == true;
+            Settings.NotifyChanged();
+        }
+
+        private void ResetButton_Click(object sender, RoutedEventArgs e)
+        {
+            Settings.Instance.scaleRatio = 1.0;
+            Settings.Instance.positionLeft = 0.0;
+            Settings.Instance.positionTop = 0.0;
+            Settings.Instance.ifLoad = false;
+            Settings.Save();
+            onResetLayout?.Invoke();
+            Settings.NotifyChanged();
+        }
+    }
+}

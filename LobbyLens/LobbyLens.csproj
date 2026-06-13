@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <OutputType>Library</OutputType>
+    <RootNamespace>LobbyLens</RootNamespace>
+    <AssemblyName>LobbyLens</AssemblyName>
+    <LangVersion>8.0</LangVersion>
+    <Version>1.0.0</Version>
+    <Authors>xhodagx</Authors>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- HDT install folder providing all runtime references; override if needed -->
+    <HdtAppDir Condition="'$(HdtAppDir)' == ''">$(LocalAppData)\HearthstoneDeckTracker\app-1.52.20</HdtAppDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Provides .NET Framework reference assemblies without a VS install -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="HearthstoneDeckTracker">
+      <HintPath>$(HdtAppDir)\HearthstoneDeckTracker.exe</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="HearthDb">
+      <HintPath>$(HdtAppDir)\HearthDb.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="untapped-scry-dotnet">
+      <HintPath>$(HdtAppDir)\untapped-scry-dotnet.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System.Net.Http" />
+    <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+
+</Project>
