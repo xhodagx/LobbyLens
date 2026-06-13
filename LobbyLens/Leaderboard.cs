@@ -21,6 +21,10 @@ namespace LobbyLens
         private const int Concurrency = 4;         // be polite to Blizzard
         private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(6);
 
+        // LobbyLens backend: one pre-aggregated, CDN-cached file per region/mode — the
+        // primary source. Direct Blizzard (BaseUrl above) is the fallback if it's down.
+        private const string LensBaseUrl = "https://stdatayififhlgyqepq.blob.core.windows.net/public/";
+
         private readonly HttpClient _http;
         private Dictionary<string, Entry> _byName;
 
@@ -80,6 +84,25 @@ namespace LobbyLens
                 LensLog.Info("leaderboard cache is stale — refreshing in background");
             }
 
+            // Primary source: the LobbyLens backend (one small cached file).
+            try
+            {
+                var lens = await FetchFromLens(region, duos);
+                if (lens != null && lens.Count > 0)
+                {
+                    _byName = lens;
+                    Ready = true;
+                    WriteCache(cachePath, lens);
+                    LensLog.Info($"leaderboard from LobbyLens backend: {lens.Count} players ({region}{(duos ? " duos" : "")})");
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                LensLog.Info($"LobbyLens backend unreachable, falling back to Blizzard direct: {ex.Message}");
+            }
+
+            // Fallback: fetch directly from Blizzard's API (paged).
             try
             {
                 var fresh = await FetchAll(region, duos);
@@ -88,7 +111,7 @@ namespace LobbyLens
                     _byName = fresh;
                     Ready = true;
                     WriteCache(cachePath, fresh);
-                    LensLog.Info($"leaderboard fetched: {fresh.Count} players ({region}{(duos ? " duos" : "")})");
+                    LensLog.Info($"leaderboard fetched direct from Blizzard: {fresh.Count} players ({region}{(duos ? " duos" : "")})");
                 }
                 else if (!Ready)
                 {
@@ -98,9 +121,28 @@ namespace LobbyLens
             }
             catch (Exception ex)
             {
-                LensLog.Error("leaderboard fetch failed", ex);
+                LensLog.Error("leaderboard fetch failed (backend + Blizzard both)", ex);
                 if (!Ready) { Failed = true; }
             }
+        }
+
+        // Fetch the pre-aggregated file from the LobbyLens backend and parse the compact
+        // {"ts":<unix>,"players":[{"n":name,"r":rating,"k":rank},...]} shape it publishes.
+        private async Task<Dictionary<string, Entry>> FetchFromLens(string region, bool duos)
+        {
+            string url = $"{LensBaseUrl}leaderboard_{region}{(duos ? "_duo" : "")}.json";
+            string body = await _http.GetStringAsync(url);
+            if (string.IsNullOrWhiteSpace(body)) { return null; }
+            var result = new Dictionary<string, Entry>();
+            foreach (Match m in LensRowRx.Matches(body))
+            {
+                string name = Unescape(m.Groups[1].Value);
+                int rating = int.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture);
+                int rank = int.Parse(m.Groups[3].Value, CultureInfo.InvariantCulture);
+                if (string.IsNullOrWhiteSpace(name) || rating <= 0) { continue; }
+                if (!result.ContainsKey(name)) { result.Add(name, new Entry { Rating = rating, Rank = rank }); }
+            }
+            return result;
         }
 
         // Deliberately dependency-free parsing: rows are flat objects
@@ -111,6 +153,11 @@ namespace LobbyLens
             "\\{\"rank\":(\\d+),\"accountid\":\"((?:[^\"\\\\]|\\\\.)*)\",\"rating\":(\\d+)",
             RegexOptions.Compiled);
         private static readonly Regex TotalPagesRx = new Regex("\"totalPages\":(\\d+)", RegexOptions.Compiled);
+
+        // LobbyLens backend row shape: {"n":name,"r":rating,"k":rank}
+        private static readonly Regex LensRowRx = new Regex(
+            "\"n\":\"((?:[^\"\\\\]|\\\\.)*)\",\"r\":(\\d+),\"k\":(\\d+)",
+            RegexOptions.Compiled);
 
         private async Task<Dictionary<string, Entry>> FetchAll(string region, bool duos)
         {

@@ -39,6 +39,7 @@ namespace LobbyLens
         private DateTime lastStatusSweep = DateTime.MinValue;
 
         private List<PlayerInfo> players = null;
+        private bool reported = false;
 
         private GameMemory memory;
         private HttpClient http;
@@ -82,8 +83,44 @@ namespace LobbyLens
             lastStateDump = null;
             lastStatusSweep = DateTime.MinValue;
             players = null;
+            reported = false;
             memory.Reset();
             panel.HidePanel();
+        }
+
+        // On return to menu, fire one anonymized summary of the match just played
+        // (opt-out via Settings.reportMatches). Only matches that actually resolved
+        // and ended (someone reached a final place) are sent.
+        private void TryReportMatch()
+        {
+            if (reported || players == null || !Settings.Instance.reportMatches) { return; }
+            if (!players.Any(p => p.FinalPlace != 0)) { return; }
+            reported = true;
+
+            string region = GetRegionStr();
+            bool duos = players.GroupBy(p => p.Team).Any(g => g.Count() > 1);
+            var summaries = new List<PlayerSummary>();
+            foreach (var p in players)
+            {
+                if (p.Name == null) { continue; }
+                leaderboard.TryGet(p.Name, out int rating, out int rank);
+                summaries.Add(new PlayerSummary
+                {
+                    HeroCardId = p.HeroCardId,
+                    FinalPlace = p.FinalPlace,
+                    Tier = p.Tier,
+                    Rating = rating,
+                    Rank = rank,
+                    Comp = p.Comp,
+                    NameHash = MatchReporter.HashName(p.Name),
+                    IsMe = p.IsMe
+                });
+            }
+            if (summaries.Count > 0)
+            {
+                _ = MatchReporter.PostAsync(http, region, duos, summaries);
+                LensLog.Info($"reported anonymized match summary ({summaries.Count} players)");
+            }
         }
 
         public void OnUpdate()
@@ -92,6 +129,7 @@ namespace LobbyLens
             {
                 if (!isReset)
                 {
+                    TryReportMatch();
                     Reset();
                     isReset = true;
                 }

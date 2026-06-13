@@ -23,6 +23,7 @@ namespace LobbyLens
             HeroInfoBox.IsChecked = Settings.Instance.showHeroInfo;
             CompsBox.IsChecked = Settings.Instance.showComps;
             EliminationsBox.IsChecked = Settings.Instance.showEliminations;
+            ReportMatchesBox.IsChecked = Settings.Instance.reportMatches;
             UpdateLabels();
 
             ready = true;
@@ -89,6 +90,13 @@ namespace LobbyLens
             Settings.Instance.showHeroInfo = HeroInfoBox.IsChecked == true;
             Settings.Instance.showComps = CompsBox.IsChecked == true;
             Settings.Instance.showEliminations = EliminationsBox.IsChecked == true;
+            Settings.NotifyChanged();
+        }
+
+        private void ReportBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!ready) { return; }
+            Settings.Instance.reportMatches = ReportMatchesBox.IsChecked == true;
             Settings.NotifyChanged();
         }
 

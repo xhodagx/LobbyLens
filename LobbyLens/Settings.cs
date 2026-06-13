@@ -19,6 +19,7 @@ namespace LobbyLens
         public bool showHeroInfo = true;
         public bool showComps = true;
         public bool showEliminations = true;
+        public bool reportMatches = true; // contribute anonymized match summaries to the backend
         private static Settings _settings;
 
         // Raised whenever the settings window changes a value, so the live
