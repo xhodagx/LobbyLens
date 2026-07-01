@@ -37,6 +37,10 @@ namespace LobbyLens
         private string lastRender = null;
         private string lastStateDump = null;
         private DateTime lastStatusSweep = DateTime.MinValue;
+        private DateTime lastTileSweep = DateTime.MinValue;
+        private double tileSweepBackoff = 1; // seconds; 1 while resolution progresses, up to 5 when stalled
+        private int lastResolvedCount = -1;
+        private int lastTileCount = -1;
 
         private List<PlayerInfo> players = null;
         private bool reported = false;
@@ -82,6 +86,10 @@ namespace LobbyLens
             lastRender = null;
             lastStateDump = null;
             lastStatusSweep = DateTime.MinValue;
+            lastTileSweep = DateTime.MinValue;
+            tileSweepBackoff = 1;
+            lastResolvedCount = -1;
+            lastTileCount = -1;
             players = null;
             reported = false;
             memory.Reset();
@@ -163,7 +171,7 @@ namespace LobbyLens
 
                 if (!leaderboard.Ready) { return; }
 
-                if (!namesDone) { ResolveTiles(); }
+                if (!namesDone && (DateTime.Now - lastTileSweep).TotalSeconds >= tileSweepBackoff) { ResolveTiles(); }
                 UpdateLiveStatus();
                 Render();
             }
@@ -186,13 +194,14 @@ namespace LobbyLens
         // tick is safe and survives tile reordering.
         private void ResolveTiles()
         {
+            lastTileSweep = DateTime.Now;
             try
             {
                 string myName = memory.MyName;
-                if (string.IsNullOrWhiteSpace(myName)) { FailName("own battletag not readable yet"); return; }
+                if (string.IsNullOrWhiteSpace(myName)) { FailName("own battletag not readable yet"); NoteSweep(false); return; }
 
                 var tiles = memory.ReadLeaderboardTiles();
-                if (tiles.Count == 0) { FailName("no leaderboard tiles readable yet"); return; }
+                if (tiles.Count == 0) { FailName("no leaderboard tiles readable yet"); NoteSweep(false); return; }
 
                 var tmp = new List<PlayerInfo>();
                 int unresolved = 0;
@@ -237,6 +246,11 @@ namespace LobbyLens
                 }
                 players = tmp;
 
+                int resolvedCount = tmp.Count - unresolved;
+                NoteSweep(resolvedCount > lastResolvedCount || tmp.Count != lastTileCount);
+                lastResolvedCount = resolvedCount;
+                lastTileCount = tmp.Count;
+
                 if (unresolved == 0)
                 {
                     namesDone = true;
@@ -251,10 +265,20 @@ namespace LobbyLens
             }
             catch (Exception ex)
             {
+                NoteSweep(false);
                 tileErrors++;
                 if (tileErrors < 5) { LensLog.Error("failed to read leaderboard tiles", ex); }
                 else if (tileErrors == 5) { LensLog.Error("failed to read leaderboard tiles; suppressing further errors", ex); }
             }
+        }
+
+        // Names appear in memory only when the user mouses over a portrait, so a
+        // sweep that finds nothing new backs off (1→2→4→5s) and any progress —
+        // a new name or a tile-count change — snaps back to 1s. Keeps the hover
+        // countdown responsive while cutting idle memory walks ~5x.
+        private void NoteSweep(bool progress)
+        {
+            tileSweepBackoff = progress ? 1 : Math.Min(tileSweepBackoff * 2, 5);
         }
 
         // Live opponent state from HDT's entities: hero, tier, health, armor, rail

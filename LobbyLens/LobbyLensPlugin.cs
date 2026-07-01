@@ -17,7 +17,7 @@ namespace LobbyLens
 
         public string Author => "xhodagx";
 
-        public Version Version => new Version(1, 1, 0);
+        public Version Version => new Version(1, 1, 1);
 
         public string ButtonText => "Settings";
 

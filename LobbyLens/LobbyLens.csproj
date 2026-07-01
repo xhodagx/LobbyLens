@@ -7,11 +7,14 @@
     <RootNamespace>LobbyLens</RootNamespace>
     <AssemblyName>LobbyLens</AssemblyName>
     <LangVersion>8.0</LangVersion>
-    <Version>1.0.0</Version>
+    <Version>1.1.1</Version>
     <Authors>xhodagx</Authors>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <!-- HDT install folder providing all runtime references; override if needed -->
-    <HdtAppDir Condition="'$(HdtAppDir)' == ''">$(LocalAppData)\HearthstoneDeckTracker\app-1.52.20</HdtAppDir>
+    <!-- HDT install folder providing all runtime references. HDT self-updates into
+         new app-<version> folders (deleting old ones), so pick the newest one
+         automatically; override with -p:HdtAppDir=<path> if needed. -->
+    <_HdtDirs Condition="'$(HdtAppDir)' == '' And Exists('$(LocalAppData)\HearthstoneDeckTracker')">$([System.IO.Directory]::GetDirectories('$(LocalAppData)\HearthstoneDeckTracker', 'app-*'))</_HdtDirs>
+    <HdtAppDir Condition="'$(HdtAppDir)' == '' And '$(_HdtDirs)' != ''">$([System.Text.RegularExpressions.Regex]::Match('$(_HdtDirs)', '[^;]+$').Value)</HdtAppDir>
   </PropertyGroup>
 
   <ItemGroup>
