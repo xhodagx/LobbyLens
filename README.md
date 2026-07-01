@@ -27,14 +27,34 @@ No Overwolf, no ads, one DLL.
 3. Restart HDT and enable the plugin under Options → Tracker → Plugins
 4. The plugin-list button opens Settings
 
+## Updates
+
+HDT has no plugin auto-update. LobbyLens checks a small metadata file on its backend once
+per HDT session; when a newer release exists, the panel shows a dim
+`vX.Y.Z available — see Settings` line and Settings gets a download link. Updating is
+manual by design: download the new DLL from Releases, replace the old one, restart HDT.
+
 ## Build
 
-Requires the .NET SDK and an installed Hearthstone Deck Tracker (references are resolved
-from the HDT install; set `HdtAppDir` if your HDT app folder differs):
+Requires the .NET SDK and an installed Hearthstone Deck Tracker (the newest
+`%LocalAppData%\HearthstoneDeckTracker\app-*` folder is auto-detected for references;
+override with `-p:HdtAppDir=<path>` if needed):
 
 ```
 dotnet build LobbyLens/LobbyLens.csproj -c Release
 ```
+
+## Releasing (maintainer)
+
+1. Bump `<Version>` in `LobbyLens/LobbyLens.csproj` (single source of truth — the plugin
+   and the update check both read the assembly version)
+2. Build Release, test in HDT, commit, tag `vX.Y.Z`, create the GitHub release with
+   `LobbyLens.dll` attached
+3. Update `meta.json` in the backend's `public` blob container: set `latest` to the new
+   version (and any support-link changes — `kofi`, `lightning`, `btc`; empty string hides
+   a link). Already-installed copies pick this up next HDT start — the update notice and
+   the Settings → Support section are driven entirely by this file, so links can be
+   added or rotated **after** binaries have shipped.
 
 ## How it gets its data
 

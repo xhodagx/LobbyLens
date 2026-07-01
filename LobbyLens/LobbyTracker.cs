@@ -58,6 +58,7 @@ namespace LobbyLens
             memory = new GameMemory();
             leaderboard = new Leaderboard(http);
             panel = new LobbyPanel();
+            _ = Meta.Load(http);
         }
 
         public void Clean(bool save)
@@ -450,6 +451,11 @@ namespace LobbyLens
             if (unresolvedCount > 0)
             {
                 lines.Add(new RankLine($"hover {unresolvedCount} more portrait{(unresolvedCount == 1 ? "" : "s")}", dim: true));
+            }
+
+            if (Meta.UpdateAvailable)
+            {
+                lines.Add(new RankLine($"v{Meta.LatestVersion} available — see Settings", dim: true));
             }
 
             string sig = string.Join("|", lines.Select(l => l.Text + "/" + l.Sub + "/" + l.Sub2 + "/" + l.Right + "/" + l.RightDim + (l.Dead ? "D" : "") + (l.Dim ? "~" : "") + (l.Divider ? "=" : "")))

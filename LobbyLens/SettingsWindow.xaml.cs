@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Windows;
 
 namespace LobbyLens
@@ -12,6 +13,7 @@ namespace LobbyLens
         {
             InitializeComponent();
             this.onResetLayout = onResetLayout;
+            ApplyMeta();
 
             FontSlider.Value = Settings.Instance.fontSize;
             OpacitySlider.Value = Settings.Instance.opacity;
@@ -109,6 +111,39 @@ namespace LobbyLens
             Settings.Save();
             onResetLayout?.Invoke();
             Settings.NotifyChanged();
+        }
+
+        // Sections light up only for values present in the remote meta.json, so
+        // shipped binaries gain/lose links without an update (HDT can't auto-update).
+        private void ApplyMeta()
+        {
+            UpdateText.Visibility = Meta.UpdateAvailable ? Visibility.Visible : Visibility.Collapsed;
+
+            bool any = false;
+            if (Meta.Kofi != null) { KofiButton.Visibility = Visibility.Visible; any = true; }
+            if (Meta.Lightning != null) { LightningText.Text = Meta.Lightning; LightningRow.Visibility = Visibility.Visible; any = true; }
+            if (Meta.Btc != null) { BtcText.Text = Meta.Btc; BtcRow.Visibility = Visibility.Visible; any = true; }
+            SupportPanel.Visibility = any ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private static void OpenUrl(string url)
+        {
+            try { Process.Start(url); }
+            catch (Exception ex) { LensLog.Debug($"failed to open url: {ex.Message}"); }
+        }
+
+        private void UpdateLink_Click(object sender, RoutedEventArgs e) => OpenUrl(Meta.ReleaseUrl);
+
+        private void KofiButton_Click(object sender, RoutedEventArgs e) => OpenUrl(Meta.Kofi);
+
+        private void CopyLightning_Click(object sender, RoutedEventArgs e)
+        {
+            try { Clipboard.SetText(Meta.Lightning); } catch { }
+        }
+
+        private void CopyBtc_Click(object sender, RoutedEventArgs e)
+        {
+            try { Clipboard.SetText(Meta.Btc); } catch { }
         }
     }
 }

@@ -7,6 +7,10 @@
         ResizeMode="NoResize"
         Topmost="True">
     <StackPanel Margin="16" Width="300">
+        <TextBlock x:Name="UpdateText" Visibility="Collapsed" TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,10">
+            <Hyperlink Click="UpdateLink_Click">Update available — download it here</Hyperlink>
+        </TextBlock>
+
         <TextBlock x:Name="FontLabel" Text="Font size: 20" FontWeight="Bold"/>
         <Slider x:Name="FontSlider" Minimum="12" Maximum="40" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="FontSlider_ValueChanged" Margin="0,2,0,10"/>
 
@@ -31,5 +35,21 @@
         <TextBlock Text="Helps build hero/comp stats. Battletags are hashed — never sent. No personal data leaves your PC." TextWrapping="Wrap" FontSize="11" Foreground="#FF888888" Margin="20,0,0,12"/>
 
         <Button x:Name="ResetButton" Content="Reset panel position and size" Click="ResetButton_Click" Padding="6,4"/>
+
+        <StackPanel x:Name="SupportPanel" Visibility="Collapsed" Margin="0,14,0,0">
+            <TextBlock Text="Support LobbyLens" FontWeight="Bold" Margin="0,0,0,2"/>
+            <TextBlock Text="LobbyLens is free and ad-free. If it helps you climb, a tip keeps it running." TextWrapping="Wrap" FontSize="11" Foreground="#FF888888" Margin="0,0,0,6"/>
+            <Button x:Name="KofiButton" Content="Tip on Ko-fi ♥" Visibility="Collapsed" Click="KofiButton_Click" Padding="6,4" Margin="0,0,0,6"/>
+            <DockPanel x:Name="LightningRow" Visibility="Collapsed" Margin="0,0,0,4">
+                <Button DockPanel.Dock="Right" Content="Copy" Click="CopyLightning_Click" Padding="8,2" Margin="6,0,0,0"/>
+                <TextBlock DockPanel.Dock="Left" Text="⚡" VerticalAlignment="Center" Margin="0,0,4,0" ToolTip="Bitcoin Lightning — best for small tips"/>
+                <TextBox x:Name="LightningText" IsReadOnly="True" FontSize="11" VerticalContentAlignment="Center"/>
+            </DockPanel>
+            <DockPanel x:Name="BtcRow" Visibility="Collapsed" Margin="0,0,0,2">
+                <Button DockPanel.Dock="Right" Content="Copy" Click="CopyBtc_Click" Padding="8,2" Margin="6,0,0,0"/>
+                <TextBlock DockPanel.Dock="Left" Text="₿" VerticalAlignment="Center" Margin="0,0,4,0" ToolTip="Bitcoin on-chain — best for larger tips (network fees apply)"/>
+                <TextBox x:Name="BtcText" IsReadOnly="True" FontSize="11" VerticalContentAlignment="Center"/>
+            </DockPanel>
+        </StackPanel>
     </StackPanel>
 </Window>

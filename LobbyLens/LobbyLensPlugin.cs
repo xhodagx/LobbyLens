@@ -17,7 +17,8 @@ namespace LobbyLens
 
         public string Author => "xhodagx";
 
-        public Version Version => new Version(1, 1, 1);
+        // Single source of truth is <Version> in the csproj (assembly version).
+        public Version Version => typeof(LobbyLensPlugin).Assembly.GetName().Version;
 
         public string ButtonText => "Settings";
 
