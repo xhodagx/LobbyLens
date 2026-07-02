@@ -10,6 +10,8 @@
         <TextBlock x:Name="UpdateText" Visibility="Collapsed" TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,10">
             <Hyperlink Click="UpdateLink_Click">Update available — download it here</Hyperlink>
         </TextBlock>
+        <TextBlock x:Name="StagedText" Visibility="Collapsed" TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,10"
+                   Text="Update installed — restart HDT to apply."/>
 
         <TextBlock x:Name="FontLabel" Text="Font size: 20" FontWeight="Bold"/>
         <Slider x:Name="FontSlider" Minimum="12" Maximum="40" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="FontSlider_ValueChanged" Margin="0,2,0,10"/>
@@ -22,7 +24,8 @@
 
         <CheckBox x:Name="SortByPlaceBox" Content="Order by current standings" Checked="SortByPlaceBox_Changed" Unchecked="SortByPlaceBox_Changed" Margin="0,2,0,4"/>
         <CheckBox x:Name="BestFirstBox" Content="Show best rating first (when not by standings)" Checked="BestFirstBox_Changed" Unchecked="BestFirstBox_Changed" Margin="0,2,0,6"/>
-        <CheckBox x:Name="DebugBox" Content="Verbose debug logging" Checked="DebugBox_Changed" Unchecked="DebugBox_Changed" Margin="0,2,0,10"/>
+        <CheckBox x:Name="DebugBox" Content="Verbose debug logging" Checked="DebugBox_Changed" Unchecked="DebugBox_Changed" Margin="0,2,0,4"/>
+        <CheckBox x:Name="AutoUpdateBox" Content="Install updates automatically (on HDT restart)" Checked="AutoUpdateBox_Changed" Unchecked="AutoUpdateBox_Changed" Margin="0,2,0,10"/>
 
         <TextBlock Text="Features" FontWeight="Bold" Margin="0,2,0,4"/>
         <CheckBox x:Name="RankNumbersBox" Content="Leaderboard rank numbers (#)" Checked="FeatureBox_Changed" Unchecked="FeatureBox_Changed" Margin="0,2,0,4"/>

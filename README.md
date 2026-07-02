@@ -29,10 +29,16 @@ No Overwolf, no ads, one DLL.
 
 ## Updates
 
-HDT has no plugin auto-update. LobbyLens checks a small metadata file on its backend once
-per HDT session; when a newer release exists, the panel shows a dim
-`vX.Y.Z available — see Settings` line and Settings gets a download link. Updating is
-manual by design: download the new DLL from Releases, replace the old one, restart HDT.
+HDT has no plugin auto-update, so LobbyLens ships its own. Once per HDT session the plugin
+checks a small metadata file on its backend; when a newer release exists it downloads the
+release package, **verifies its RSA signature against a key baked into the plugin** (an
+unsigned or tampered package is refused — the CDN is just a pipe), and stages it. The
+panel shows `vX.Y.Z installed — restart HDT`; the update applies on the next HDT start.
+
+Auto-update is on by default and can be disabled in Settings, which falls back to a
+notice + manual download link. A remote stand-down flag lets a broken game patch pause
+match processing cleanly ("LobbyLens paused") until a fix ships — the updater keeps
+running, since it is the recovery path.
 
 ## Build
 
@@ -46,15 +52,21 @@ dotnet build LobbyLens/LobbyLens.csproj -c Release
 
 ## Releasing (maintainer)
 
-1. Bump `<Version>` in `LobbyLens/LobbyLens.csproj` (single source of truth — the plugin
-   and the update check both read the assembly version)
-2. Build Release, test in HDT, commit, tag `vX.Y.Z`, create the GitHub release with
-   `LobbyLens.dll` attached
-3. Update `meta.json` in the backend's `public` blob container: set `latest` to the new
-   version (and any support-link changes — `kofi`, `lightning`, `btc`; empty string hides
-   a link). Already-installed copies pick this up next HDT start — the update notice and
-   the Settings → Support section are driven entirely by this file, so links can be
-   added or rotated **after** binaries have shipped.
+1. Bump `<Version>` in `LobbyLens/LobbyLens.csproj` (single source of truth — the plugin,
+   the update check, and the package name all read it)
+2. Test in HDT, commit, then run `./release.ps1` — it builds, zips, **signs the package
+   with the offline release key**, uploads it, and updates `meta.json` (merging, so
+   support links survive). Every installed copy stages the update on its next HDT start.
+3. Create the matching GitHub release with the zip attached (manual-download fallback).
+
+`meta.json` is the remote control for shipped binaries — **additive fields only, never
+rename or repurpose one**: `latest`/`url`/`pkg`/`sig` (update channel), `kofi`/
+`lightning`/`btc` (Settings support links; empty hides), `standDown`/`minVersion`
+(kill switch), `ingest` (endpoint override). The private signing key lives outside the
+repo (`~\.lobbylens\signing\`) and must never be committed or uploaded; losing it means
+old binaries can no longer auto-update (they fall back to the manual notice), so back it
+up. Key rotation: add the new public key to `Updater.PublicKeys`, ship a release signed
+with the old key, then sign with the new one from the next release on.
 
 ## How it gets its data
 

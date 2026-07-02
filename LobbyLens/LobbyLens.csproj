@@ -7,7 +7,7 @@
     <RootNamespace>LobbyLens</RootNamespace>
     <AssemblyName>LobbyLens</AssemblyName>
     <LangVersion>8.0</LangVersion>
-    <Version>1.1.2</Version>
+    <Version>1.2.0</Version>
     <Authors>xhodagx</Authors>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <!-- HDT install folder providing all runtime references. HDT self-updates into
@@ -36,6 +36,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="System.Net.Http" />
+    <Reference Include="System.IO.Compression" />
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
 

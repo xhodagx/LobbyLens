@@ -24,7 +24,11 @@ namespace LobbyLens
     // Battletags are one-way hashed — raw identities are never transmitted or stored.
     public static class MatchReporter
     {
-        private const string IngestUrl = "https://func-lobbylens-yififhlgyqepq.azurewebsites.net/api/match";
+        private const string DefaultIngestUrl = "https://func-lobbylens-yififhlgyqepq.azurewebsites.net/api/match";
+
+        // meta.json can repoint ingest without a plugin release, so only the blob
+        // hostname is truly pinned. Falls back to the compiled-in endpoint.
+        private static string IngestUrl => Meta.Ingest ?? DefaultIngestUrl;
 
         // Stable per-player pseudonym: lets future features count repeat encounters
         // without the backend ever holding a real battletag.

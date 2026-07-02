@@ -26,6 +26,7 @@ namespace LobbyLens
             CompsBox.IsChecked = Settings.Instance.showComps;
             EliminationsBox.IsChecked = Settings.Instance.showEliminations;
             ReportMatchesBox.IsChecked = Settings.Instance.reportMatches;
+            AutoUpdateBox.IsChecked = Settings.Instance.autoUpdate;
             UpdateLabels();
 
             ready = true;
@@ -102,6 +103,13 @@ namespace LobbyLens
             Settings.NotifyChanged();
         }
 
+        private void AutoUpdateBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!ready) { return; }
+            Settings.Instance.autoUpdate = AutoUpdateBox.IsChecked == true;
+            Settings.NotifyChanged();
+        }
+
         private void ResetButton_Click(object sender, RoutedEventArgs e)
         {
             Settings.Instance.scaleRatio = 1.0;
@@ -117,7 +125,8 @@ namespace LobbyLens
         // shipped binaries gain/lose links without an update (HDT can't auto-update).
         private void ApplyMeta()
         {
-            UpdateText.Visibility = Meta.UpdateAvailable ? Visibility.Visible : Visibility.Collapsed;
+            StagedText.Visibility = Updater.Staged ? Visibility.Visible : Visibility.Collapsed;
+            UpdateText.Visibility = Meta.UpdateAvailable && !Updater.Staged ? Visibility.Visible : Visibility.Collapsed;
 
             bool any = false;
             if (Meta.Kofi != null) { KofiButton.Visibility = Visibility.Visible; any = true; }

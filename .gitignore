@@ -1,3 +1,6 @@
 bin/
 obj/
 *.user
+
+# release artifacts (published to blob + GitHub releases, never committed)
+LobbyLens-v*.zip

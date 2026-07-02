@@ -30,6 +30,7 @@ namespace LobbyLens
 
         private bool isReset = true;
         private bool failShown = false;
+        private bool standShown = false;
         private bool namesDone = false;
         private int tileErrors = 0;
         private bool statusErrorLogged = false;
@@ -80,6 +81,7 @@ namespace LobbyLens
         private void Reset()
         {
             failShown = false;
+            standShown = false;
             namesDone = false;
             tileErrors = 0;
             statusErrorLogged = false;
@@ -155,6 +157,27 @@ namespace LobbyLens
                 }
 
                 if (Core.Game.GetTurnNumber() == 0) { return; }
+
+                // Remote kill switch: a game patch that breaks memory reads gets a
+                // clean "paused" panel instead of a match of SEH exceptions. The
+                // updater still runs (it's the recovery path); only match
+                // processing stops.
+                string standDown = Meta.StandDownMessage;
+                if (standDown != null)
+                {
+                    if (!standShown)
+                    {
+                        standShown = true;
+                        var msg = new List<RankLine>
+                        {
+                            new RankLine("LobbyLens paused"),
+                            new RankLine(standDown, dim: true)
+                        };
+                        if (Updater.Staged) { msg.Add(new RankLine("update ready — restart HDT", dim: true)); }
+                        panel.DisplayLines(msg);
+                    }
+                    return;
+                }
 
                 if (leaderboard.Failed && !leaderboard.Ready)
                 {
@@ -453,7 +476,11 @@ namespace LobbyLens
                 lines.Add(new RankLine($"hover {unresolvedCount} more portrait{(unresolvedCount == 1 ? "" : "s")}", dim: true));
             }
 
-            if (Meta.UpdateAvailable)
+            if (Updater.Staged)
+            {
+                lines.Add(new RankLine($"v{Meta.LatestVersion} installed — restart HDT", dim: true));
+            }
+            else if (Meta.UpdateAvailable)
             {
                 lines.Add(new RankLine($"v{Meta.LatestVersion} available — see Settings", dim: true));
             }

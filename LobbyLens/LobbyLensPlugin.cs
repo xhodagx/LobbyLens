@@ -41,8 +41,10 @@ namespace LobbyLens
             Settings.Load();
             LensLog.SetDebug(Settings.Instance.debugLog);
             LensLog.Info($"LobbyLens v{Version} loaded");
+            Updater.CleanupStaleFiles();
             CreateMenuItem();
             MenuItem.IsChecked = true;
+            _ = Updater.Run();
         }
 
         public void OnUnload()
