@@ -94,6 +94,14 @@ community stats (hero/comp win rates, lobby difficulty). This is controlled by t
 
 Logs and settings live in `%AppData%\HearthstoneDeckTracker\LobbyLens\`.
 
+## Support
+
+LobbyLens is free, ad-free, and MIT-licensed. If it helps you climb, tips are welcome —
+via Ko-fi, Bitcoin Lightning (best for small tips, near-zero fees), or on-chain Bitcoin
+(better for larger tips). The current links and addresses are always in the plugin's
+Settings window under **Support LobbyLens** — they're served remotely, so they stay
+current even in older plugin versions.
+
 ## Related repositories
 
 - [lobbylens-infra](https://github.com/xhodagx/lobbylens-infra) — the backend's Azure
