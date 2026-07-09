@@ -27,9 +27,12 @@ if ($Btc -and $Btc -notmatch '^(bc1[a-z0-9]{20,}|[13][A-Za-z0-9]{25,})$') { Writ
 $metaUrl = "https://$StorageAccount.blob.core.windows.net/public/meta.json"
 $meta = Invoke-RestMethod $metaUrl
 
-foreach ($pair in @(@('kofi', $Kofi), @('lightning', $Lightning), @('btc', $Btc))) {
-  $name, $value = $pair
-  if ($null -eq $value) { continue } # not passed — leave as-is
+foreach ($pair in @(@('Kofi', 'kofi'), @('Lightning', 'lightning'), @('Btc', 'btc'))) {
+  $param, $name = $pair
+  # [string] params default to '' (never $null), so "omitted" must be detected via
+  # $PSBoundParameters — an explicit '' still clears, an omitted param leaves as-is.
+  if (-not $PSBoundParameters.ContainsKey($param)) { continue }
+  $value = Get-Variable $param -ValueOnly
   if ($meta.PSObject.Properties[$name]) { $meta.$name = $value }
   else { $meta | Add-Member -NotePropertyName $name -NotePropertyValue $value }
 }
