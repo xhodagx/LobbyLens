@@ -14,6 +14,8 @@ namespace LobbyLens
     {
         public const double MinScale = 0.5;
         public const double MaxScale = 3.0;
+        public const double MinPanelWidth = 190;  // matches PanelBorder MinWidth
+        public const double MaxPanelWidth = 640;
 
         private static readonly Brush NormalBrush = new SolidColorBrush(Color.FromRgb(0xE8, 0xE3, 0xE3));
         private static readonly Brush RatingBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF));
@@ -21,11 +23,18 @@ namespace LobbyLens
         private static readonly Brush DeadBrush = new SolidColorBrush(Color.FromRgb(0x8C, 0x88, 0x88));
         private static readonly Brush DividerBrush = new SolidColorBrush(Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
 
+        // Mouse interaction: body = move, E/W edges = width, SE corner = zoom.
+        // Height is content-driven (one row per player), so N/S edges do nothing —
+        // "taller" can only honestly mean "zoom", which is what the corner does.
+        private enum GripZone { None, Move, EdgeE, EdgeW, CornerSE }
+
         private bool isFirst = true;
         private bool isChange = false;
-        private bool isDragging = false;
+        private GripZone mouseMode = GripZone.None;
         private Point originalGridPosition;
         private Point originalMousePosition;
+        private double originalWidth;
+        private double originalScale;
 
         public LobbyPanel()
         {
@@ -50,12 +59,15 @@ namespace LobbyLens
             RootScale.ScaleX = scale;
             RootScale.ScaleY = scale;
             RootGrid.Opacity = Settings.Instance.opacity;
+            double pw = Settings.Instance.panelWidth;
+            PanelBorder.Width = pw > 0 ? Math.Max(MinPanelWidth, Math.Min(pw, MaxPanelWidth)) : double.NaN;
         }
 
         // Reset position/scale to first-run defaults (invoked from the settings window).
         public void ResetLayout()
         {
             Settings.Instance.scaleRatio = Math.Max(MinScale, Math.Min(Core.OverlayWindow.Width / 1920.0, 2.0));
+            Settings.Instance.panelWidth = 0;
             RootGrid.Margin = new Thickness(0.0, 0.0, 0.0, 0.0);
             ApplyAppearance();
             isChange = true;
@@ -206,34 +218,128 @@ namespace LobbyLens
             RowsHost.Visibility = RowsHost.IsVisible ? Visibility.Collapsed : Visibility.Visible;
         }
 
+        // Grip zones in PanelBorder-local (unscaled) units; the threshold is divided
+        // by the current scale so it stays ~10 SCREEN pixels grabbable at any zoom.
+        private GripZone ZoneAt(MouseEventArgs e)
+        {
+            double scale = Math.Max(0.1, RootScale.ScaleX);
+            double grip = 10.0 / scale;
+            Point p = e.GetPosition(PanelBorder);
+            double w = PanelBorder.ActualWidth;
+            double h = PanelBorder.ActualHeight;
+            if (w <= 0 || h <= 0) { return GripZone.Move; }
+
+            bool nearE = p.X >= w - grip;
+            bool nearW = p.X <= grip;
+            bool nearS = p.Y >= h - grip;
+            if (nearE && nearS) { return GripZone.CornerSE; }
+            if (nearE && p.Y > 30) { return GripZone.EdgeE; } // keep the –/✕ buttons out of the east grip
+            if (nearW) { return GripZone.EdgeW; }
+            return GripZone.Move;
+        }
+
         private void PanelBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            isDragging = true;
+            GripZone zone = ZoneAt(e);
+
+            if (e.ClickCount == 2 && (zone == GripZone.EdgeE || zone == GripZone.EdgeW))
+            {
+                Settings.Instance.panelWidth = 0;
+                ApplyAppearance();
+                isChange = true;
+                LensLog.Debug("panel width reset to auto (edge double-click)");
+                return;
+            }
+
+            mouseMode = zone;
             originalMousePosition = e.GetPosition(this);
             originalGridPosition = new Point(RootGrid.Margin.Left, RootGrid.Margin.Top);
+            originalWidth = PanelBorder.ActualWidth;
+            originalScale = RootScale.ScaleX;
+            PanelBorder.CaptureMouse(); // fast edge-drags routinely leave the border
         }
 
         private void PanelBorder_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            isDragging = false;
+            mouseMode = GripZone.None;
+            if (PanelBorder.IsMouseCaptured) { PanelBorder.ReleaseMouseCapture(); }
         }
 
         private void PanelBorder_MouseLeave(object sender, MouseEventArgs e)
         {
-            isDragging = false;
+            if (!PanelBorder.IsMouseCaptured)
+            {
+                mouseMode = GripZone.None;
+                PanelBorder.Cursor = null;
+            }
         }
 
         private void PanelBorder_MouseMove(object sender, MouseEventArgs e)
         {
-            if (isDragging)
+            if (mouseMode == GripZone.None)
             {
-                Point currentPosition = e.GetPosition(this);
-                double offsetX = currentPosition.X - originalMousePosition.X;
-                double offsetY = currentPosition.Y - originalMousePosition.Y;
-
-                SetPosition(originalGridPosition.X + offsetX, originalGridPosition.Y + offsetY);
-                isChange = true;
+                GripZone hover = ZoneAt(e);
+                PanelBorder.Cursor = hover == GripZone.CornerSE ? Cursors.SizeNWSE
+                    : hover == GripZone.EdgeE || hover == GripZone.EdgeW ? Cursors.SizeWE
+                    : null;
+                return;
             }
+
+            if (e.LeftButton != MouseButtonState.Pressed) // missed the up event somehow
+            {
+                mouseMode = GripZone.None;
+                if (PanelBorder.IsMouseCaptured) { PanelBorder.ReleaseMouseCapture(); }
+                return;
+            }
+
+            Point cur = e.GetPosition(this);
+            double dx = cur.X - originalMousePosition.X;
+            double dy = cur.Y - originalMousePosition.Y;
+
+            switch (mouseMode)
+            {
+                case GripZone.Move:
+                    SetPosition(originalGridPosition.X + dx, originalGridPosition.Y + dy);
+                    isChange = true;
+                    break;
+
+                case GripZone.EdgeE:
+                {
+                    // dx is in canvas (screen) pixels; width is stored unscaled
+                    double newW = Clamp(originalWidth + dx / originalScale, MinPanelWidth, MaxPanelWidth);
+                    Settings.Instance.panelWidth = newW;
+                    PanelBorder.Width = newW;
+                    isChange = true;
+                    break;
+                }
+
+                case GripZone.EdgeW:
+                {
+                    // west drag: width changes AND the panel shifts so the right edge stays put
+                    double newW = Clamp(originalWidth - dx / originalScale, MinPanelWidth, MaxPanelWidth);
+                    Settings.Instance.panelWidth = newW;
+                    PanelBorder.Width = newW;
+                    double newLeft = originalGridPosition.X + (originalWidth - newW) * originalScale;
+                    RootGrid.Margin = new Thickness(Math.Max(0.0, newLeft), originalGridPosition.Y, 0.0, 0.0);
+                    isChange = true;
+                    break;
+                }
+
+                case GripZone.CornerSE:
+                {
+                    // scale so the corner tracks the horizontal drag; height follows
+                    double newScale = Clamp((originalWidth * originalScale + dx) / Math.Max(1.0, originalWidth), MinScale, MaxScale);
+                    Settings.Instance.scaleRatio = newScale;
+                    ApplyAppearance();
+                    isChange = true;
+                    break;
+                }
+            }
+        }
+
+        private static double Clamp(double v, double lo, double hi)
+        {
+            return v < lo ? lo : (v > hi ? hi : v);
         }
 
         private void PanelBorder_MouseWheel(object sender, MouseWheelEventArgs e)

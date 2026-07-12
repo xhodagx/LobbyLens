@@ -124,6 +124,7 @@ namespace LobbyLens
             Settings.Instance.scaleRatio = 1.0;
             Settings.Instance.positionLeft = 0.0;
             Settings.Instance.positionTop = 0.0;
+            Settings.Instance.panelWidth = 0.0;
             Settings.Instance.ifLoad = false;
             Settings.Save();
             onResetLayout?.Invoke();

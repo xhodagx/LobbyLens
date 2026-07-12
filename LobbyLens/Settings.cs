@@ -10,6 +10,7 @@ namespace LobbyLens
         public double scaleRatio = 1.0;
         public double positionLeft = 0.0;
         public double positionTop = 0.0;
+        public double panelWidth = 0.0;   // explicit width in unscaled units; 0 = auto (content-sized)
         public double fontSize = 20.0;
         public double opacity = 1.0;
         public bool bestFirst = true;

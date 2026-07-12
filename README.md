@@ -18,7 +18,9 @@ No Overwolf, no ads, one DLL.
 - **Eliminations** — strikethrough + final place, hardened against false positives
 - **Duos** — team grouping, shared-pool health, team placements
 - Settings window: font size, opacity, panel scale, sort mode, per-feature toggles,
-  privacy, verbose logging, position reset. Drag to move, scroll to zoom (0.5×–3×).
+  privacy, verbose logging, position reset. Drag to move, scroll to zoom (0.5×–3×),
+  drag the side edges to set width (double-click an edge for auto-width), drag the
+  bottom-right corner to zoom.
 
 ## Install
 
