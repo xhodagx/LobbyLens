@@ -14,6 +14,15 @@ namespace LobbyLens
             InitializeComponent();
             this.onResetLayout = onResetLayout;
             ApplyMeta();
+            if (!Meta.LoadCompletion.IsCompleted)
+            {
+                // Window opened before the once-per-session meta fetch finished —
+                // refresh the update banner + support section when it lands.
+                _ = Meta.LoadCompletion.ContinueWith(_ =>
+                {
+                    try { Dispatcher.Invoke(ApplyMeta); } catch { }
+                });
+            }
 
             FontSlider.Value = Settings.Instance.fontSize;
             OpacitySlider.Value = Settings.Instance.opacity;

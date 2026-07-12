@@ -103,18 +103,30 @@ namespace LobbyLens
         {
             int staged = 0;
             using var archive = new ZipArchive(new MemoryStream(zipBytes), ZipArchiveMode.Read);
-            foreach (string dir in TargetDirs)
+            string[] dirs = TargetDirs;
+
+            // zip-slip guard: validate EVERY entry against every target dir before
+            // writing anything, so a rejected package can never leave partial staging.
+            foreach (string dir in dirs)
             {
                 foreach (ZipArchiveEntry entry in archive.Entries)
                 {
                     if (entry.Name.Length == 0) { continue; } // directory entry
-                    // zip-slip guard: entries must resolve inside the plugin directory
                     string target = Path.GetFullPath(Path.Combine(dir, entry.FullName));
                     if (!target.StartsWith(dir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                     {
                         LensLog.Error($"update package entry escapes plugin dir, rejected: {entry.FullName}");
                         return 0;
                     }
+                }
+            }
+
+            foreach (string dir in dirs)
+            {
+                foreach (ZipArchiveEntry entry in archive.Entries)
+                {
+                    if (entry.Name.Length == 0) { continue; }
+                    string target = Path.GetFullPath(Path.Combine(dir, entry.FullName));
 
                     Directory.CreateDirectory(Path.GetDirectoryName(target));
                     string tmp = target + ".new";
@@ -152,10 +164,13 @@ namespace LobbyLens
             {
                 string exeDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
                 var dirs = new List<string> { exeDir };
-                int i = exeDir.LastIndexOf(@"\Plugins", StringComparison.OrdinalIgnoreCase);
-                if (i >= 0)
+                const string marker = @"\Plugins";
+                int i = exeDir.LastIndexOf(marker, StringComparison.OrdinalIgnoreCase);
+                // must be a whole path segment ("...\Plugins" or "...\Plugins\..."),
+                // not a prefix of e.g. "...\PluginsBackup"
+                if (i >= 0 && (i + marker.Length == exeDir.Length || exeDir[i + marker.Length] == '\\'))
                 {
-                    string rel = exeDir.Substring(i + @"\Plugins".Length).TrimStart('\\');
+                    string rel = exeDir.Substring(i + marker.Length).TrimStart('\\');
                     string roaming = Path.Combine(Hearthstone_Deck_Tracker.Config.AppDataPath, "Plugins", rel)
                         .TrimEnd('\\');
                     if (!dirs.Contains(roaming, StringComparer.OrdinalIgnoreCase)) { dirs.Add(roaming); }

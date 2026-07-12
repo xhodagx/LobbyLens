@@ -29,7 +29,6 @@ namespace LobbyLens
         }
 
         private bool isReset = true;
-        private bool failShown = false;
         private bool standShown = false;
         private bool namesDone = false;
         private int tileErrors = 0;
@@ -80,7 +79,6 @@ namespace LobbyLens
 
         private void Reset()
         {
-            failShown = false;
             standShown = false;
             namesDone = false;
             tileErrors = 0;
@@ -179,22 +177,10 @@ namespace LobbyLens
                     return;
                 }
 
-                if (leaderboard.Failed && !leaderboard.Ready)
-                {
-                    if (!failShown)
-                    {
-                        failShown = true;
-                        panel.DisplayLines(new List<RankLine>
-                        {
-                            new RankLine("No rating data"),
-                            new RankLine("check log for details", dim: true)
-                        });
-                    }
-                    return;
-                }
-
-                if (!leaderboard.Ready) { return; }
-
+                // Ratings are one feature, not the panel's spine: heroes, tiers, health,
+                // comps, standings and eliminations are all local data. A ratings outage
+                // (backend + Blizzard down, or CN region) renders with "-" instead of
+                // withholding everything; while ratings load they show "…" briefly.
                 if (!namesDone && (DateTime.Now - lastTileSweep).TotalSeconds >= tileSweepBackoff) { ResolveTiles(); }
                 UpdateLiveStatus();
                 Render();
@@ -476,6 +462,11 @@ namespace LobbyLens
                 lines.Add(new RankLine($"hover {unresolvedCount} more portrait{(unresolvedCount == 1 ? "" : "s")}", dim: true));
             }
 
+            if (leaderboard.Failed && !leaderboard.Ready)
+            {
+                lines.Add(new RankLine("ratings unavailable — see log", dim: true));
+            }
+
             if (Updater.Staged)
             {
                 lines.Add(new RankLine($"v{Meta.LatestVersion} installed — restart HDT", dim: true));
@@ -516,6 +507,9 @@ namespace LobbyLens
                 return rating.ToString();
             }
             rank = 0;
+            // Only claim "below the 8000 cutoff" when we actually have a board to
+            // check against; otherwise distinguish still-loading from failed.
+            if (!leaderboard.Ready) { return leaderboard.Failed ? "-" : "…"; }
             return region == "CN" ? "-" : "8000↓";
         }
 

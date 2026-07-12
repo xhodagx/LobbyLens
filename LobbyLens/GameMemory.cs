@@ -105,26 +105,37 @@ namespace LobbyLens
             {
                 if (_image != null) { return _image; }
 
-                using Process proc = Process.GetProcessesByName("Hearthstone").FirstOrDefault();
-                if (proc == null)
+                Process[] procs = Process.GetProcessesByName("Hearthstone");
+                try
                 {
-                    LogOnChange("[mem] no Hearthstone process");
-                    return null;
+                    Process proc = procs.FirstOrDefault();
+                    if (proc == null)
+                    {
+                        LogOnChange("[mem] no Hearthstone process");
+                        return null;
+                    }
+
+                    string unity = DetectUnityVersion(proc);
+                    using MonoScry scry = new MonoScry(Scry.connect(proc.Id));
+
+                    if (unity != null)
+                    {
+                        _image = scry.getImage(new List<string> { "Blizzard.T5.ServiceLocator" }, unity);
+                        LogOnChange($"[mem] attach pid {proc.Id}, unity {unity} (detected) => {(_image == null ? "null" : "ok")}");
+                        if (_image != null) { return _image; }
+                    }
+
+                    _image = scry.getImage(new List<string> { "Blizzard.T5.ServiceLocator" }, FallbackUnityVersion);
+                    LogOnChange($"[mem] attach pid {proc.Id}, unity {FallbackUnityVersion} (fallback) => {(_image == null ? "null — plugin needs an update" : "ok")}");
+                    // Total failure: the game may have patched (new Unity) since we cached
+                    // the detected version — forget it so the next attempt re-detects.
+                    if (_image == null) { _detectedUnity = null; }
+                    return _image;
                 }
-
-                string unity = DetectUnityVersion(proc);
-                using MonoScry scry = new MonoScry(Scry.connect(proc.Id));
-
-                if (unity != null)
+                finally
                 {
-                    _image = scry.getImage(new List<string> { "Blizzard.T5.ServiceLocator" }, unity);
-                    LogOnChange($"[mem] attach pid {proc.Id}, unity {unity} (detected) => {(_image == null ? "null" : "ok")}");
-                    if (_image != null) { return _image; }
+                    foreach (Process p in procs) { p.Dispose(); }
                 }
-
-                _image = scry.getImage(new List<string> { "Blizzard.T5.ServiceLocator" }, FallbackUnityVersion);
-                LogOnChange($"[mem] attach pid {proc.Id}, unity {FallbackUnityVersion} (fallback) => {(_image == null ? "null — plugin needs an update" : "ok")}");
-                return _image;
             }
         }
 

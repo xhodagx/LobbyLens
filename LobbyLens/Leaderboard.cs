@@ -133,6 +133,19 @@ namespace LobbyLens
             string url = $"{LensBaseUrl}leaderboard_{region}{(duos ? "_duo" : "")}.json";
             string body = await _http.GetStringAsync(url);
             if (string.IsNullOrWhiteSpace(body)) { return null; }
+
+            Match ts = LensTsRx.Match(body);
+            if (ts.Success)
+            {
+                var fetched = DateTimeOffset.FromUnixTimeSeconds(long.Parse(ts.Groups[1].Value, CultureInfo.InvariantCulture));
+                TimeSpan age = DateTimeOffset.UtcNow - fetched;
+                if (age > MaxLensAge)
+                {
+                    LensLog.Warn($"backend leaderboard is {age.TotalHours:F0}h stale — treating as unavailable, using Blizzard direct");
+                    return null;
+                }
+            }
+
             var result = new Dictionary<string, Entry>();
             foreach (Match m in LensRowRx.Matches(body))
             {
@@ -158,6 +171,11 @@ namespace LobbyLens
         private static readonly Regex LensRowRx = new Regex(
             "\"n\":\"((?:[^\"\\\\]|\\\\.)*)\",\"r\":(\\d+),\"k\":(\\d+)",
             RegexOptions.Compiled);
+        private static readonly Regex LensTsRx = new Regex("\"ts\":(\\d+)", RegexOptions.Compiled);
+
+        // The blob keeps returning 200 even if the backend's refresh timer dies, so
+        // "unreachable" alone can't trigger the Blizzard fallback — staleness must too.
+        private static readonly TimeSpan MaxLensAge = TimeSpan.FromHours(24);
 
         private async Task<Dictionary<string, Entry>> FetchAll(string region, bool duos)
         {

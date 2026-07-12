@@ -14,7 +14,7 @@ namespace LobbyLens
         public double opacity = 1.0;
         public bool bestFirst = true;
         public bool sortByPlace = true;
-        public bool debugLog = true;
+        public bool debugLog = false; // opt-in; existing installs keep their saved value
         public bool showRankNumbers = true;
         public bool showHeroInfo = true;
         public bool showComps = true;

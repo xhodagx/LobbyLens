@@ -1,6 +1,7 @@
 using System;
 using System.Net.Http;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace LobbyLens
@@ -18,7 +19,7 @@ namespace LobbyLens
     {
         private const string MetaUrl = "https://stdatayififhlgyqepq.blob.core.windows.net/public/meta.json";
 
-        private static bool loading;
+        private static int loadState;
         private static readonly TaskCompletionSource<bool> loaded = new TaskCompletionSource<bool>();
 
         public static string LatestVersion { get; private set; }
@@ -60,8 +61,7 @@ namespace LobbyLens
 
         public static async Task Load(HttpClient http)
         {
-            if (loading) { return; }
-            loading = true;
+            if (Interlocked.Exchange(ref loadState, 1) == 1) { return; }
             try
             {
                 string json = await http.GetStringAsync(MetaUrl);

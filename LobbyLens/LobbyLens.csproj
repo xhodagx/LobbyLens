@@ -7,12 +7,17 @@
     <RootNamespace>LobbyLens</RootNamespace>
     <AssemblyName>LobbyLens</AssemblyName>
     <LangVersion>8.0</LangVersion>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <Authors>xhodagx</Authors>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <!-- HDT install folder providing all runtime references. HDT self-updates into
          new app-<version> folders (deleting old ones), so pick the newest one
-         automatically; override with -p:HdtAppDir=<path> if needed. -->
+         automatically; override with -p:HdtAppDir=<path> if needed.
+         KNOWN LIMIT: "newest" is the LEXICALLY-last directory (MSBuild evaluation
+         can't sort numerically), which mispicks when a version segment crosses a
+         digit boundary — e.g. app-1.100.0 sorts before app-1.99.0. If the build ever
+         breaks on missing HDT references right after an HDT update, that's this:
+         build with  -p:HdtAppDir="$env:LocalAppData\HearthstoneDeckTracker\app-<newest>". -->
     <_HdtDirs Condition="'$(HdtAppDir)' == '' And Exists('$(LocalAppData)\HearthstoneDeckTracker')">$([System.IO.Directory]::GetDirectories('$(LocalAppData)\HearthstoneDeckTracker', 'app-*'))</_HdtDirs>
     <HdtAppDir Condition="'$(HdtAppDir)' == '' And '$(_HdtDirs)' != ''">$([System.Text.RegularExpressions.Regex]::Match('$(_HdtDirs)', '[^;]+$').Value)</HdtAppDir>
   </PropertyGroup>
