@@ -53,9 +53,12 @@ $pkgBlob = "releases/LobbyLens-v$version.zip"
 az storage blob upload --account-name $StorageAccount --account-key $key -c public -n $pkgBlob -f $zip `
   --content-type 'application/zip' --overwrite --output none
 
-# merge into the existing meta.json so support links etc. are preserved
+# merge into the existing meta.json so support links etc. are preserved.
+# HARD-FAIL if unreachable: publishing from an empty object would wipe the
+# kofi/lightning/btc links every shipped binary reads.
 $metaUrl = "https://$StorageAccount.blob.core.windows.net/public/meta.json"
-try { $meta = Invoke-RestMethod $metaUrl } catch { $meta = [pscustomobject]@{} }
+try { $meta = Invoke-RestMethod $metaUrl }
+catch { throw "meta.json unreachable at $metaUrl — refusing to publish (would wipe support links): $($_.Exception.Message)" }
 $set = @{
   latest = "$version"
   url    = 'https://github.com/xhodagx/LobbyLens/releases'
