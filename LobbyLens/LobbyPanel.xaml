@@ -54,7 +54,8 @@
                 <Grid Margin="0,0,0,4">
                     <TextBlock Text="OPPONENT MMR" Foreground="#FFD4B16A" FontWeight="Bold" FontSize="12" VerticalAlignment="Center" Margin="0,0,48,0"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <Button x:Name="MinimizeButton" Content="–" Click="MinimizeButton_Click" Style="{StaticResource GlyphBtn}"/>
+                        <Button x:Name="GearButton" Content="⚙" Click="GearButton_Click" Style="{StaticResource GlyphBtn}" ToolTip="LobbyLens settings"/>
+                        <Button x:Name="MinimizeButton" Content="–" Click="MinimizeButton_Click" Style="{StaticResource GlyphBtn}" Margin="4,0,0,0"/>
                         <Button x:Name="CloseButton" Content="✕" Click="CloseButton_Click" Style="{StaticResource GlyphBtn}" Margin="4,0,0,0"/>
                     </StackPanel>
                 </Grid>

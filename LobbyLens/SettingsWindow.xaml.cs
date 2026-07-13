@@ -6,6 +6,25 @@ namespace LobbyLens
 {
     public partial class SettingsWindow : Window
     {
+        // Singleton opener shared by HDT's plugin-list button and the panel's ⚙.
+        private static SettingsWindow open;
+
+        public static void Open(Action onResetLayout)
+        {
+            if (open == null || !open.IsLoaded)
+            {
+                open = new SettingsWindow(onResetLayout);
+                open.Show();
+            }
+            open.Activate();
+        }
+
+        public static void CloseOpen()
+        {
+            if (open != null && open.IsLoaded) { open.Close(); }
+            open = null;
+        }
+
         private readonly Action onResetLayout;
         private bool ready = false;
 

@@ -8,7 +8,6 @@ namespace LobbyLens
     {
         public MenuItem MenuItem { get; private set; }
         private LobbyTracker tracker = null;
-        private SettingsWindow settingsWindow = null;
         private DateTime lastUpdate = DateTime.Now;
 
         public string Name => "LobbyLens";
@@ -24,15 +23,7 @@ namespace LobbyLens
 
         public void OnButtonPress()
         {
-            if (settingsWindow == null || !settingsWindow.IsLoaded)
-            {
-                settingsWindow = new SettingsWindow(() => tracker?.ResetLayout());
-                settingsWindow.Show();
-            }
-            else
-            {
-                settingsWindow.Activate();
-            }
+            SettingsWindow.Open(() => tracker?.ResetLayout());
         }
 
         public void OnLoad()
@@ -49,7 +40,7 @@ namespace LobbyLens
 
         public void OnUnload()
         {
-            if (settingsWindow != null && settingsWindow.IsLoaded) { settingsWindow.Close(); }
+            SettingsWindow.CloseOpen();
             MenuItem.IsChecked = false;
         }
 

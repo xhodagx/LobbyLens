@@ -51,6 +51,7 @@ namespace LobbyLens
             OverlayExtensions.SetIsOverlayHitTestVisible(PanelBorder, true);
             OverlayExtensions.SetIsOverlayHitTestVisible(CloseButton, true);
             OverlayExtensions.SetIsOverlayHitTestVisible(MinimizeButton, true);
+            OverlayExtensions.SetIsOverlayHitTestVisible(GearButton, true);
         }
 
         private void ApplyAppearance()
@@ -211,6 +212,11 @@ namespace LobbyLens
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             Visibility = Visibility.Hidden;
+        }
+
+        private void GearButton_Click(object sender, RoutedEventArgs e)
+        {
+            SettingsWindow.Open(ResetLayout);
         }
 
         private void MinimizeButton_Click(object sender, RoutedEventArgs e)
