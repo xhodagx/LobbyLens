@@ -8,6 +8,8 @@ composition, live standings order, and eliminations — pinned in one HDT-styled
 
 No Overwolf, no ads, one DLL.
 
+<p align="center"><img src="assets/panel.png" width="340" alt="The LobbyLens panel during a Battlegrounds duos match: opponent ratings, heroes, tiers, health, board comps, next-opponent markers and eliminations"/></p>
+
 ## Features
 
 - **Opponent MMR + ladder rank** (`Prophane 11240 #389`) from the official Blizzard
