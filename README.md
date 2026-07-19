@@ -28,7 +28,7 @@ No Overwolf, no ads, one DLL.
 
 ## Install
 
-1. Build (see below) or take a built `LobbyLens.dll`
+1. Grab `LobbyLens.dll` from the [latest release](https://github.com/xhodagx/LobbyLens/releases) zip, or build it yourself (see below)
 2. Drop it into `%AppData%\HearthstoneDeckTracker\Plugins\`
 3. Restart HDT and enable the plugin under Options → Tracker → Plugins
 4. The plugin-list button opens Settings
@@ -66,7 +66,7 @@ dotnet build LobbyLens/LobbyLens.csproj -c Release
 3. Create the matching GitHub release with the zip attached (manual-download fallback).
 
 `meta.json` is the remote control for shipped binaries — **additive fields only, never
-rename or repurpose one**: `latest`/`url`/`pkg`/`sig` (update channel), `kofi`/
+rename or repurpose one**: `latest`/`url`/`pkg`/`sig`/`sha256` (update channel), `kofi`/
 `lightning`/`btc` (Settings support links; empty hides), `standDown`/`minVersion`
 (kill switch), `ingest` (endpoint override). The private signing key lives outside the
 repo (`~\.lobbylens\signing\`) and must never be committed or uploaded; losing it means
@@ -78,7 +78,7 @@ with the old key, then sign with the new one from the next release on.
 
 - **Ratings** come from the **LobbyLens backend** — a small cloud service that mirrors
   Blizzard's official leaderboards into one pre-aggregated, CDN-cached file per region/mode.
-  The plugin fetches a single ~50 KB file instead of paging the Blizzard API directly. If
+  The plugin fetches a single cached file instead of paging the Blizzard API directly. If
   the backend is ever unreachable, the plugin **automatically falls back** to fetching
   Blizzard's API itself, so ratings keep working regardless. Results are cached on disk
   (6-hour TTL). Backend source: [lobbylens-functions](https://github.com/xhodagx/lobbylens-functions).
