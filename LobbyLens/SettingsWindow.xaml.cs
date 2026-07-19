@@ -53,6 +53,7 @@ namespace LobbyLens
             HeroInfoBox.IsChecked = Settings.Instance.showHeroInfo;
             CompsBox.IsChecked = Settings.Instance.showComps;
             EliminationsBox.IsChecked = Settings.Instance.showEliminations;
+            NextOpponentBox.IsChecked = Settings.Instance.showNextOpponent;
             SessionBox.IsChecked = Settings.Instance.showSession;
             ReportMatchesBox.IsChecked = Settings.Instance.reportMatches;
             AutoUpdateBox.IsChecked = Settings.Instance.autoUpdate;
@@ -122,6 +123,7 @@ namespace LobbyLens
             Settings.Instance.showHeroInfo = HeroInfoBox.IsChecked == true;
             Settings.Instance.showComps = CompsBox.IsChecked == true;
             Settings.Instance.showEliminations = EliminationsBox.IsChecked == true;
+            Settings.Instance.showNextOpponent = NextOpponentBox.IsChecked == true;
             Settings.Instance.showSession = SessionBox.IsChecked == true;
             Settings.NotifyChanged();
         }

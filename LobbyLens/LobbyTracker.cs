@@ -27,6 +27,7 @@ namespace LobbyLens
             public int CompTurn;
             public int DeadSweeps;     // consecutive sweeps reading health <= 0
             public int LivePlace;      // current rail position
+            public bool NextOpponent;  // we fight this player (or their ghost) next
         }
 
         private bool isReset = true;
@@ -39,6 +40,7 @@ namespace LobbyLens
         private string lastStateDump = null;
         private DateTime lastStatusSweep = DateTime.MinValue;
         private DateTime lastTileSweep = DateTime.MinValue;
+        private int lastNextPid = 0;
         private double tileSweepBackoff = 1; // seconds; 1 while resolution progresses, up to 5 when stalled
         private int lastResolvedCount = -1;
         private int lastTileCount = -1;
@@ -89,6 +91,7 @@ namespace LobbyLens
             lastStateDump = null;
             lastStatusSweep = DateTime.MinValue;
             lastTileSweep = DateTime.MinValue;
+            lastNextPid = 0;
             tileSweepBackoff = 1;
             lastResolvedCount = -1;
             lastTileCount = -1;
@@ -301,7 +304,7 @@ namespace LobbyLens
                 // Carry live state across the rebuild.
                 if (players != null)
                 {
-                    foreach (var oldP in players.Where(x => x.FinalPlace != 0 || x.HeroName != null || x.Tier > 0))
+                    foreach (var oldP in players.Where(x => x.FinalPlace != 0 || x.HeroName != null || x.Tier > 0 || x.NextOpponent))
                     {
                         var match = tmp.FirstOrDefault(x =>
                             (oldP.Name != null && x.Name == oldP.Name) ||
@@ -318,6 +321,7 @@ namespace LobbyLens
                             match.CompTurn = oldP.CompTurn;
                             match.LivePlace = oldP.LivePlace;
                             match.DeadSweeps = oldP.DeadSweeps;
+                            match.NextOpponent = oldP.NextOpponent;
                         }
                     }
                 }
@@ -378,6 +382,7 @@ namespace LobbyLens
                     .ToList();
 
                 string dump = string.Empty;
+                var byPid = new Dictionary<int, PlayerInfo>();
                 foreach (var entity in canonical)
                 {
                     int pid = entity.GetTag(HearthDb.Enums.GameTag.PLAYER_ID);
@@ -392,6 +397,7 @@ namespace LobbyLens
                             (cardId.StartsWith(x.HeroCardId, StringComparison.OrdinalIgnoreCase) ||
                              x.HeroCardId.StartsWith(cardId, StringComparison.OrdinalIgnoreCase)));
                     if (p == null) { continue; }
+                    byPid[pid] = p;
 
                     if (p.HeroName == null)
                     {
@@ -455,6 +461,23 @@ namespace LobbyLens
                     }
                 }
 
+                // "(next)" marker. NEXT_OPPONENT_PLAYER_ID lives on the LOCAL player
+                // entity (HDT's TagChangeActions gates on PlayerEntity.Id) and names the
+                // player we fight next; a dead player's id here means their ghost.
+                // Marked per-team so duos flag the whole opposing pair.
+                int nextPid = 0;
+                try { nextPid = Core.Game.PlayerEntity?.GetTag(HearthDb.Enums.GameTag.NEXT_OPPONENT_PLAYER_ID) ?? 0; }
+                catch { }
+                byPid.TryGetValue(nextPid, out PlayerInfo next);
+                if (nextPid != lastNextPid)
+                {
+                    lastNextPid = nextPid;
+                    LensLog.Debug($"next opponent: pid{nextPid} ({next?.Name ?? next?.HeroCardId ?? "?"})");
+                }
+                int myTeam = players.FirstOrDefault(x => x.IsMe)?.Team ?? -1;
+                bool nextValid = next != null && (myTeam < 0 || next.Team != myTeam);
+                foreach (var pl in players) { pl.NextOpponent = nextValid && pl.Team == next.Team; }
+
                 if (dump.Length > 0 && dump != lastStateDump)
                 {
                     lastStateDump = dump;
@@ -506,7 +529,8 @@ namespace LobbyLens
                     if (p.Name == null) { continue; }  // unresolved: the footer counts them
 
                     bool markDead = Settings.Instance.showEliminations && p.FinalPlace != 0;
-                    string left = p.Name + (p.IsMe ? " (you)" : "");
+                    string left = p.Name + (p.IsMe ? " (you)" : "")
+                        + (Settings.Instance.showNextOpponent && p.NextOpponent ? " (next)" : "");
                     if (markDead && p.FinalPlace > 0) { left = $"({Ordinal(p.FinalPlace)}) {left}"; }
                     RankLine line = new RankLine(left, dead: markDead)
                     {

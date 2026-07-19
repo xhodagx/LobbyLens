@@ -16,6 +16,8 @@ No Overwolf, no ads, one DLL.
 - **Hero, tier, health** per player, live (`Jandice · T5 · 31♥+4`)
 - **Board composition** of each opponent's last-fought board (`4 Mech · 2 Beast — t9`)
 - **Live standings order** — rows reorder as rail places shift; rating sort available
+- **Next opponent marker** — the player (or duos team) you fight next is tagged `(next)`,
+  ghost boards included
 - **Eliminations** — strikethrough + final place, hardened against false positives
 - **Session tracker** — a running header line: games played, average finish, and net
   MMR for your current session (toggle in Settings)

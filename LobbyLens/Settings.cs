@@ -22,6 +22,7 @@ namespace LobbyLens
         public bool showHeroInfo = true;
         public bool showComps = true;
         public bool showEliminations = true;
+        public bool showNextOpponent = true;  // "(next)" marker on the upcoming combat opponent
         public bool showSession = true;   // running session line (games / avg place / net MMR)
         public bool reportMatches = true; // contribute anonymized match summaries to the backend
         public bool autoUpdate = true;    // stage signed releases automatically; they apply on HDT restart
