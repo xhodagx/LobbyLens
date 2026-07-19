@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo-1024.png" width="128" alt="LobbyLens logo"/></p>
+
 # LobbyLens
 
 A Hearthstone Deck Tracker plugin that turns the Battlegrounds leaderboard rail into a live
@@ -113,8 +115,6 @@ current even in older plugin versions.
 
 ## Related repositories
 
-- [lobbylens-infra](https://github.com/xhodagx/lobbylens-infra) — the backend's Azure
-  infrastructure (Bicep)
 - [lobbylens-functions](https://github.com/xhodagx/lobbylens-functions) — the backend
   service (Azure Functions)
 
