@@ -1,5 +1,5 @@
 <#
-  Publish/rotate the support (donation) links shown in every installed plugin's
+  Publish/rotate the tip links shown in every installed plugin's
   Settings window. Merges into meta.json on the backend blob — no plugin release
   needed; installed copies pick it up on their next HDT start.
 

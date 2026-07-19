@@ -32,10 +32,10 @@ No Overwolf, no ads, one DLL.
 
 ## Install
 
-1. Grab `LobbyLens.dll` from the [latest release](https://github.com/xhodagx/LobbyLens/releases) zip, or build it yourself (see below)
-2. Drop it into `%AppData%\HearthstoneDeckTracker\Plugins\`
-3. Restart HDT and enable the plugin under Options → Tracker → Plugins
-4. The plugin-list button opens Settings
+1. Download the latest `LobbyLens-vX.Y.Z.zip` from the [Releases page](https://github.com/xhodagx/LobbyLens/releases) and unzip it
+2. Copy `LobbyLens.dll` into `%AppData%\HearthstoneDeckTracker\Plugins\` (paste that path into the File Explorer address bar)
+3. Restart Hearthstone Deck Tracker and enable **LobbyLens** under Options → Tracker → Plugins
+4. Join a Battlegrounds match — the panel appears from turn 1. Updates install themselves from then on.
 
 ## Updates
 
