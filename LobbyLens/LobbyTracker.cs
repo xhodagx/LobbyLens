@@ -13,9 +13,10 @@ namespace LobbyLens
     {
         private class PlayerInfo
         {
-            public string Name;        // null until the portrait has been moused over
+            public string Name;        // null until moused over OR filled from the lobby roster
             public int Team;
             public string HeroCardId;
+            public string AccountId;   // stable "hi:lo" identity from the lobby roster, if available
             public bool IsMe;
             public int FinalPlace;     // 0 = alive, -1 = dead with unknown place
             public string HeroName;
@@ -232,6 +233,32 @@ namespace LobbyLens
                     tmp.Add(p);
                 }
 
+                // Fill still-unhovered names from GameState's lobby roster, matched by
+                // hero card id — this is what lets names appear without the hover ritual
+                // when the roster is populated. Also captures each player's stable account
+                // id for match reporting. Purely additive: if the roster is empty or a
+                // hero is mirrored (ambiguous), those seats fall back to hover exactly as
+                // before.
+                var lobby = memory.ReadLobbyInfo();
+                if (lobby.Count > 0)
+                {
+                    foreach (var p in tmp)
+                    {
+                        if (p.HeroCardId == null) { continue; }
+                        var m = lobby.Where(l => l.HeroCardId != null &&
+                            l.HeroCardId.Equals(p.HeroCardId, StringComparison.OrdinalIgnoreCase)).ToList();
+                        if (m.Count != 1) { continue; } // skip mirror-hero ambiguity
+                        if (p.AccountId == null) { p.AccountId = m[0].AccountId; }
+                        if (p.Name == null && !string.IsNullOrWhiteSpace(m[0].Name))
+                        {
+                            p.Name = m[0].Name;
+                            p.IsMe = m[0].Name == myName;
+                            unresolved--;
+                            LensLog.Debug($"lobby roster filled '{m[0].Name}' without hover");
+                        }
+                    }
+                }
+
                 // Carry live state across the rebuild.
                 if (players != null)
                 {
@@ -242,6 +269,7 @@ namespace LobbyLens
                             (oldP.HeroCardId != null && x.HeroCardId == oldP.HeroCardId));
                         if (match != null)
                         {
+                            if (match.AccountId == null) { match.AccountId = oldP.AccountId; }
                             match.FinalPlace = oldP.FinalPlace;
                             match.HeroName = oldP.HeroName;
                             match.Tier = oldP.Tier;

@@ -8,11 +8,15 @@ using ScryDotNet;
 namespace LobbyLens
 {
     // Reads the game client's UI memory through HDT's bundled Scry library:
-    // the local player's battletag and the Battlegrounds leaderboard rail tiles.
+    // the local player's battletag, the Battlegrounds leaderboard rail tiles, and
+    // the GameState lobby roster.
     //
     // Field paths verified against the live client (2026-06, Unity 2022.3.62):
     //   tile name:    m_overlay.m_heroActor.m_playerNameText.m_Text  (hover-populated)
     //   hero card id: m_overlay.m_heroActor.m_entity.m_cardIdInternal
+    //   lobby roster: GameState.s_instance.m_playerInfoMap.valueSlots[i]
+    //                 .m_name / .m_playerHero.m_cardIdInternal / .m_gameAccountId.EntityId
+    //                 (path mirrors HearthMirror's GetBattlegroundsLobbyInfo)
     // Reads of nonexistent fields throw native SEHExceptions — every read is guarded.
     public class GameMemory
     {
@@ -28,6 +32,13 @@ namespace LobbyLens
         {
             public int Team;
             public dynamic Handle;
+        }
+
+        public struct LobbyPlayer
+        {
+            public string Name;         // discriminator (#1234) stripped, may be empty
+            public string HeroCardId;   // join key against the rail tiles
+            public string AccountId;    // "hi:lo" — stable, name-change-proof identity
         }
 
         public void Reset()
@@ -74,6 +85,66 @@ namespace LobbyLens
                     dynamic card = cards[c];
                     if (card != null) { result.Add(new Tile { Team = (int)t, Handle = card }); }
                 }
+            }
+            return result;
+        }
+
+        // The GameState lobby roster as a data map (not the visual rail). Unlike the
+        // hover-gated tile name, this map may hold every player's name + hero + account
+        // id from match start — the caller uses it to fill names WITHOUT the hover
+        // ritual, falling back to the tiles when it's empty or partial. Best-effort:
+        // any miss yields an empty list, never throws into the update loop.
+        public List<LobbyPlayer> ReadLobbyInfo()
+        {
+            var result = new List<LobbyPlayer>();
+            try
+            {
+                dynamic gs = Image?["GameState"]?["s_instance"];
+                dynamic slots = gs?["m_playerInfoMap"]?["valueSlots"];
+                if (slots == null) { return result; }
+
+                for (uint i = 0; i < slots.size(); i++)
+                {
+                    dynamic p = slots[i];
+                    if (p == null) { continue; }
+
+                    string name = null;
+                    try { name = p["m_name"]; } catch { }
+                    if (string.IsNullOrWhiteSpace(name)) { continue; }
+                    int hash = name.IndexOf('#');
+                    if (hash > 0) { name = name.Substring(0, hash); }
+
+                    string hero = null;
+                    try { hero = p["m_playerHero"]?["m_cardIdInternal"]; } catch { }
+                    if (string.IsNullOrWhiteSpace(hero))
+                    {
+                        try { hero = p["m_playerHero"]?["m_staticEntityDef"]?["m_cardIdInternal"]; } catch { }
+                    }
+
+                    string acct = null;
+                    try
+                    {
+                        dynamic eid = p["m_gameAccountId"]?["EntityId"];
+                        if (eid != null)
+                        {
+                            object hi = eid["high_"];
+                            object lo = eid["low_"];
+                            if (hi != null && lo != null) { acct = hi.ToString() + ":" + lo.ToString(); }
+                        }
+                    }
+                    catch { }
+
+                    result.Add(new LobbyPlayer
+                    {
+                        Name = name,
+                        HeroCardId = string.IsNullOrWhiteSpace(hero) ? null : hero,
+                        AccountId = acct
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnChange($"[mem] lobby roster read failed: {ex.GetType().Name}");
             }
             return result;
         }
