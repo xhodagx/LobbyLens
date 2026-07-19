@@ -10,7 +10,7 @@ No Overwolf, no ads, one DLL.
 
 <table align="center"><tr>
 <td align="center" valign="top"><img src="assets/overlay-solo.jpg" width="320" alt="The LobbyLens panel in a solo Battlegrounds lobby: ratings and ladder rank, heroes, tiers, health, board comps, the next-opponent marker, and eliminated players with final places"/><br/><sub><b>Solo</b> lobby</sub></td>
-<td align="center" valign="top"><img src="assets/overlay-duos.png" width="320" alt="The LobbyLens panel during a Battlegrounds duos match: opponent ratings, heroes, tiers, health, board comps, next-opponent markers and eliminations"/><br/><sub><b>Duos</b> lobby</sub></td>
+<td align="center" valign="top"><img src="assets/overlay-duos.jpg" width="320" alt="The LobbyLens panel during a Battlegrounds duos match: opponent ratings, heroes, tiers, health, board comps, next-opponent markers and eliminations"/><br/><sub><b>Duos</b> lobby</sub></td>
 </tr></table>
 
 ## Features
