@@ -8,7 +8,7 @@ composition, live standings order, and eliminations — pinned in one HDT-styled
 
 No Overwolf, no ads, one DLL.
 
-<p align="center"><img src="assets/lobbylens-overlay.png" width="340" alt="The LobbyLens panel during a Battlegrounds duos match: opponent ratings, heroes, tiers, health, board comps, next-opponent markers and eliminations"/></p>
+<p align="center"><img src="assets/overlay-duos.png" width="340" alt="The LobbyLens panel during a Battlegrounds duos match: opponent ratings, heroes, tiers, health, board comps, next-opponent markers and eliminations"/><br/><sub><b>Duos</b> lobby</sub></p>
 
 ## Features
 
