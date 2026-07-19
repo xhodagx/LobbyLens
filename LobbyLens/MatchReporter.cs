@@ -16,6 +16,7 @@ namespace LobbyLens
         public int Rank;
         public string Comp;
         public string NameHash;
+        public string AccountHash;  // hashed stable account id; null when unavailable
         public bool IsMe;
     }
 
@@ -47,7 +48,7 @@ namespace LobbyLens
             try
             {
                 var sb = new StringBuilder();
-                sb.Append("{\"schema\":1,\"region\":\"").Append(region).Append("\",\"duos\":").Append(duos ? "true" : "false").Append(",\"players\":[");
+                sb.Append("{\"schema\":2,\"region\":\"").Append(region).Append("\",\"duos\":").Append(duos ? "true" : "false").Append(",\"players\":[");
                 for (int i = 0; i < players.Count; i++)
                 {
                     PlayerSummary p = players[i];
@@ -59,6 +60,7 @@ namespace LobbyLens
                       .Append(",\"k\":").Append(p.Rank)
                       .Append(",\"c\":").Append(JsonStr(p.Comp))
                       .Append(",\"id\":").Append(JsonStr(p.NameHash))
+                      .Append(",\"aid\":").Append(JsonStr(p.AccountHash))
                       .Append(",\"me\":").Append(p.IsMe ? "true" : "false").Append('}');
                 }
                 sb.Append("]}");

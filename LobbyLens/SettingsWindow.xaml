@@ -31,7 +31,8 @@
         <CheckBox x:Name="RankNumbersBox" Content="Leaderboard rank numbers (#)" Checked="FeatureBox_Changed" Unchecked="FeatureBox_Changed" Margin="0,2,0,4"/>
         <CheckBox x:Name="HeroInfoBox" Content="Hero, tier and health" Checked="FeatureBox_Changed" Unchecked="FeatureBox_Changed" Margin="0,2,0,4"/>
         <CheckBox x:Name="CompsBox" Content="Board minion types" Checked="FeatureBox_Changed" Unchecked="FeatureBox_Changed" Margin="0,2,0,4"/>
-        <CheckBox x:Name="EliminationsBox" Content="Mark eliminated players" Checked="FeatureBox_Changed" Unchecked="FeatureBox_Changed" Margin="0,2,0,12"/>
+        <CheckBox x:Name="EliminationsBox" Content="Mark eliminated players" Checked="FeatureBox_Changed" Unchecked="FeatureBox_Changed" Margin="0,2,0,4"/>
+        <CheckBox x:Name="SessionBox" Content="Session line (games, avg place, net MMR)" Checked="FeatureBox_Changed" Unchecked="FeatureBox_Changed" Margin="0,2,0,12"/>
 
         <TextBlock Text="Privacy" FontWeight="Bold" Margin="0,2,0,4"/>
         <CheckBox x:Name="ReportMatchesBox" Content="Contribute anonymous match data" Checked="ReportBox_Changed" Unchecked="ReportBox_Changed" Margin="0,2,0,2"/>

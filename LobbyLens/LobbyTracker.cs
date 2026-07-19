@@ -123,6 +123,7 @@ namespace LobbyLens
                     Rank = rank,
                     Comp = p.Comp,
                     NameHash = MatchReporter.HashName(p.Name),
+                    AccountHash = p.AccountId != null ? MatchReporter.HashName(p.AccountId) : null,
                     IsMe = p.IsMe
                 });
             }
@@ -139,6 +140,7 @@ namespace LobbyLens
             {
                 if (!isReset)
                 {
+                    RecordSession();
                     TryReportMatch();
                     Reset();
                     isReset = true;
@@ -153,6 +155,7 @@ namespace LobbyLens
                     bool duos = !Core.Game.IsBattlegroundsSoloMatch;
                     LensLog.Info($"BG match detected (duos={duos})");
                     _ = leaderboard.Load(GetRegionStr(), duos);
+                    Session.OnGameStart(SafeBgRating());
                 }
 
                 if (Core.Game.GetTurnNumber() == 0) { return; }
@@ -186,6 +189,22 @@ namespace LobbyLens
                 UpdateLiveStatus();
                 Render();
             }
+        }
+
+        // Our own final placement for the just-ended game — FinalPlace once we've been
+        // eliminated, otherwise the live rail place (1 when we win and stay alive).
+        private void RecordSession()
+        {
+            var me = players?.FirstOrDefault(p => p.IsMe);
+            if (me == null) { return; }
+            int place = me.FinalPlace > 0 ? me.FinalPlace : me.LivePlace;
+            if (place > 0) { Session.OnGameEnd(place); }
+        }
+
+        private static int? SafeBgRating()
+        {
+            try { return Core.Game.CurrentBattlegroundsRating; }
+            catch { return null; }
         }
 
         private string GetRegionStr()
@@ -432,6 +451,12 @@ namespace LobbyLens
             string region = GetRegionStr();
             bool duos = players.GroupBy(p => p.Team).Any(g => g.Count() > 1);
             var lines = new List<RankLine>();
+
+            if (Settings.Instance.showSession)
+            {
+                string sess = Session.Summary();
+                if (sess != null) { lines.Add(new RankLine(sess, dim: true)); }
+            }
 
             var teamGroups = players.GroupBy(p => p.Team);
             if (Settings.Instance.sortByPlace)
