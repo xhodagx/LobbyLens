@@ -10,8 +10,9 @@ No Overwolf, no ads, one DLL.
 
 - **Opponent MMR + ladder rank** (`Prophane 11240 #389`) from the official Blizzard
   leaderboards (players below the 8000 cutoff show as `8000↓`)
-- **Guided name resolution** — the panel appears from turn 1 with placeholders and a
-  "hover N more portraits" countdown (the game only loads names into memory on mouseover)
+- **Name resolution** — the panel appears from turn 1, reading the lobby roster from
+  game memory; any name it can't get that way is filled when you hover the portrait,
+  with a "hover N more portraits" countdown for the stragglers
 - **Hero, tier, health** per player, live (`Jandice · T5 · 31♥+4`)
 - **Board composition** of each opponent's last-fought board (`4 Mech · 2 Beast — t9`)
 - **Live standings order** — rows reorder as rail places shift; rating sort available
