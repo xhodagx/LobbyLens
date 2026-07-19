@@ -14,8 +14,9 @@ param(
   [string] $Lightning,
   [string] $Btc,
   [string] $StorageAccount = 'stdatayififhlgyqepq',
-  [string] $SubscriptionId = '<subscription-id>'
+  [string] $SubscriptionId   # defaults to the active az CLI subscription
 )
+$subArgs = if ($SubscriptionId) { @('--subscription', $SubscriptionId) } else { @() }
 
 $ErrorActionPreference = 'Stop'
 
@@ -39,7 +40,7 @@ foreach ($pair in @(@('Kofi', 'kofi'), @('Lightning', 'lightning'), @('Btc', 'bt
 
 $file = Join-Path $env:TEMP 'lobbylens-meta.json'
 $meta | ConvertTo-Json | Out-File $file -Encoding utf8
-$key = az storage account keys list -n $StorageAccount --subscription $SubscriptionId --query '[0].value' -o tsv
+$key = az storage account keys list -n $StorageAccount @subArgs --query '[0].value' -o tsv
 az storage blob upload --account-name $StorageAccount --account-key $key -c public -n meta.json -f $file `
   --content-type 'application/json' --content-cache-control 'public, max-age=900' --overwrite --output none
 Remove-Item $file -Force

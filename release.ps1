@@ -12,9 +12,10 @@
 param(
   [string] $KeyPath = "$env:USERPROFILE\.lobbylens\signing\lobbylens-release-key1.xml",
   [string] $StorageAccount = 'stdatayififhlgyqepq',
-  [string] $SubscriptionId = '<subscription-id>',
+  [string] $SubscriptionId,   # defaults to the active az CLI subscription
   [switch] $DryRun
 )
+$subArgs = if ($SubscriptionId) { @('--subscription', $SubscriptionId) } else { @() }
 
 $ErrorActionPreference = 'Stop'
 $repo = $PSScriptRoot
@@ -48,7 +49,7 @@ Write-Host "==> Signed (sha256 $($sha.Substring(0,16))…)"
 if ($DryRun) { Write-Host '==> DryRun: skipping uploads'; return }
 
 # --- publish package + updated meta.json -------------------------------------
-$key = az storage account keys list -n $StorageAccount --subscription $SubscriptionId --query '[0].value' -o tsv
+$key = az storage account keys list -n $StorageAccount @subArgs --query '[0].value' -o tsv
 $pkgBlob = "releases/LobbyLens-v$version.zip"
 az storage blob upload --account-name $StorageAccount --account-key $key -c public -n $pkgBlob -f $zip `
   --content-type 'application/zip' --overwrite --output none
