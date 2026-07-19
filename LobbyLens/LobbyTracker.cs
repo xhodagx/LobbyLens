@@ -62,11 +62,11 @@ namespace LobbyLens
             _ = Meta.Load(http);
         }
 
-        public void Clean(bool save)
+        public void Clean()
         {
             memory.Reset();
             http.Dispose();
-            panel.Clean(save);
+            panel.Clean();
             http = null;
             memory = null;
             leaderboard = null;
@@ -185,19 +185,39 @@ namespace LobbyLens
                 // comps, standings and eliminations are all local data. A ratings outage
                 // (backend + Blizzard down, or CN region) renders with "-" instead of
                 // withholding everything; while ratings load they show "…" briefly.
-                if (!namesDone && (DateTime.Now - lastTileSweep).TotalSeconds >= tileSweepBackoff) { ResolveTiles(); }
+                // Sweep until every name AND stable account id is captured — the roster
+                // can populate after the last portrait was hovered, and the account id
+                // enriches the match report. NoteSweep's backoff caps the idle cost.
+                bool needSweep = !namesDone || players.Any(p => p.AccountId == null);
+                if (needSweep && (DateTime.Now - lastTileSweep).TotalSeconds >= tileSweepBackoff) { ResolveTiles(); }
                 UpdateLiveStatus();
                 Render();
             }
         }
 
-        // Our own final placement for the just-ended game — FinalPlace once we've been
-        // eliminated, otherwise the live rail place (1 when we win and stay alive).
+        // Our own final placement for the just-ended game. FinalPlace once we've been
+        // eliminated; the live rail place only when it can be trusted — we died (any
+        // dead reading) or we demonstrably won (every rival team eliminated). A player
+        // who concedes while alive gets no record: the rail still shows their
+        // pre-concede standing (1 for everyone at match start), not a result.
         private void RecordSession()
         {
             var me = players?.FirstOrDefault(p => p.IsMe);
             if (me == null) { return; }
-            int place = me.FinalPlace > 0 ? me.FinalPlace : me.LivePlace;
+            int place = 0;
+            if (me.FinalPlace > 0) { place = me.FinalPlace; }
+            else if (me.FinalPlace == -1 || me.DeadSweeps >= 1)
+            {
+                place = me.LivePlace; // we died; the last rail read is the best estimate
+            }
+            else
+            {
+                var rivals = players.Where(p => p.Team != me.Team).ToList();
+                if (rivals.Count > 0 && rivals.All(p => p.FinalPlace != 0))
+                {
+                    place = me.LivePlace; // corroborated win: every rival team is out
+                }
+            }
             if (place > 0) { Session.OnGameEnd(place); }
         }
 
@@ -310,9 +330,12 @@ namespace LobbyLens
 
                 if (unresolved == 0)
                 {
-                    namesDone = true;
                     lastNameFail = null;
-                    LensLog.Info($"all {players.Count} tiles resolved: [{string.Join(", ", players.Select(x => x.Name))}]");
+                    if (!namesDone) // aid sweeps re-enter here; log the milestone once
+                    {
+                        namesDone = true;
+                        LensLog.Info($"all {players.Count} tiles resolved: [{string.Join(", ", players.Select(x => x.Name))}]");
+                    }
                 }
                 else
                 {
@@ -361,10 +384,13 @@ namespace LobbyLens
                     string cardId = entity.CardId;
                     if (string.IsNullOrWhiteSpace(cardId)) { continue; }
 
+                    // Exact id first; prefix matching (skin/variant suffixes) only as a
+                    // fallback, so it can never shadow another player's exact match.
                     PlayerInfo p = players.FirstOrDefault(x => x.HeroCardId != null &&
-                        (cardId.Equals(x.HeroCardId, StringComparison.OrdinalIgnoreCase) ||
-                         cardId.StartsWith(x.HeroCardId, StringComparison.OrdinalIgnoreCase) ||
-                         x.HeroCardId.StartsWith(cardId, StringComparison.OrdinalIgnoreCase)));
+                            cardId.Equals(x.HeroCardId, StringComparison.OrdinalIgnoreCase))
+                        ?? players.FirstOrDefault(x => x.HeroCardId != null &&
+                            (cardId.StartsWith(x.HeroCardId, StringComparison.OrdinalIgnoreCase) ||
+                             x.HeroCardId.StartsWith(cardId, StringComparison.OrdinalIgnoreCase)));
                     if (p == null) { continue; }
 
                     if (p.HeroName == null)
@@ -473,18 +499,11 @@ namespace LobbyLens
             bool firstTeam = true;
             foreach (var team in teamGroups)
             {
-                if (duos && !firstTeam) { lines.Add(new RankLine(null, divider: true)); }
-                firstTeam = false;
-
+                var teamLines = new List<RankLine>();
                 foreach (var p in team)
                 {
                     if (p.IsMe && !duos) { continue; } // solo: hide own row
-
-                    if (p.Name == null)
-                    {
-                        lines.Add(new RankLine("hover a portrait…", dim: true));
-                        continue;
-                    }
+                    if (p.Name == null) { continue; }  // unresolved: the footer counts them
 
                     bool markDead = Settings.Instance.showEliminations && p.FinalPlace != 0;
                     string left = p.Name + (p.IsMe ? " (you)" : "");
@@ -505,8 +524,13 @@ namespace LobbyLens
                     {
                         line.Sub2 = $"{p.Comp} — t{p.CompTurn}";
                     }
-                    lines.Add(line);
+                    teamLines.Add(line);
                 }
+
+                if (teamLines.Count == 0) { continue; } // fully-unresolved team: no dangling divider
+                if (duos && !firstTeam) { lines.Add(new RankLine(null, divider: true)); }
+                firstTeam = false;
+                lines.AddRange(teamLines);
             }
 
             int unresolvedCount = players.Count(p => p.Name == null);
@@ -530,7 +554,7 @@ namespace LobbyLens
             }
 
             string sig = string.Join("|", lines.Select(l => l.Text + "/" + l.Sub + "/" + l.Sub2 + "/" + l.Right + "/" + l.RightDim + (l.Dead ? "D" : "") + (l.Dim ? "~" : "") + (l.Divider ? "=" : "")))
-                + $"#{Settings.Instance.showRankNumbers}{Settings.Instance.showHeroInfo}{Settings.Instance.showComps}{Settings.Instance.showEliminations}{Settings.Instance.bestFirst}{Settings.Instance.sortByPlace}";
+                + $"#{Settings.Instance.showRankNumbers}{Settings.Instance.showHeroInfo}{Settings.Instance.showComps}{Settings.Instance.showEliminations}{Settings.Instance.bestFirst}{Settings.Instance.sortByPlace}{Settings.Instance.fontSize}";
             if (sig == lastRender) { return; }
             lastRender = sig;
             panel.DisplayLines(lines);

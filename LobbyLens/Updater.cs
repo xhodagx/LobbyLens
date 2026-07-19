@@ -52,14 +52,14 @@ namespace LobbyLens
         {
             try
             {
-                await Meta.LoadCompletion;
+                await Meta.LoadCompletion.ConfigureAwait(false);
                 if (!Settings.Instance.autoUpdate || Staged || !Meta.UpdateAvailable) { return; }
                 if (Meta.PackageUrl == null || Meta.PackageSig == null) { return; }
 
                 byte[] zip;
                 using (var http = new HttpClient { Timeout = TimeSpan.FromMinutes(2), MaxResponseContentBufferSize = MaxPackageBytes })
                 {
-                    zip = await http.GetByteArrayAsync(Meta.PackageUrl);
+                    zip = await http.GetByteArrayAsync(Meta.PackageUrl).ConfigureAwait(false);
                 }
 
                 if (!VerifySignature(zip, Meta.PackageSig))

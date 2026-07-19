@@ -95,7 +95,8 @@ community stats (hero/comp win rates, lobby difficulty). This is controlled by t
 - Battletags are **one-way SHA-256 hashed** before they ever leave your machine — raw
   player names are never transmitted or stored.
 - A summary contains heroes, placements, tiers, ratings, and board comps for the lobby —
-  no chat, no personal information, no account identifiers.
+  no chat and no personal information. Every identifier in it (battletag, stable account
+  id) is one-way hashed before it leaves your machine.
 - Toggle it off any time in Settings.
 
 Logs and settings live in `%AppData%\HearthstoneDeckTracker\LobbyLens\`.

@@ -195,10 +195,10 @@ namespace LobbyLens
             return row;
         }
 
-        public void Clean(bool save)
+        public void Clean()
         {
             Settings.Changed -= ApplyAppearance;
-            if (save && isChange)
+            if (isChange)
             {
                 Settings.Instance.scaleRatio = RootScale.ScaleX;
                 Settings.Instance.positionLeft = RootGrid.Margin.Left;
@@ -352,8 +352,8 @@ namespace LobbyLens
         {
             double newRatio = RootScale.ScaleX;
 
-            if (e.Delta > 0) { newRatio -= 0.1; }
-            else if (e.Delta < 0) { newRatio += 0.1; }
+            if (e.Delta > 0) { newRatio += 0.1; } // wheel up = zoom in
+            else if (e.Delta < 0) { newRatio -= 0.1; }
 
             newRatio = Math.Max(MinScale, Math.Min(newRatio, MaxScale));
 

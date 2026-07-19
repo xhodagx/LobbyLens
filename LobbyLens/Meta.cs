@@ -64,7 +64,7 @@ namespace LobbyLens
             if (Interlocked.Exchange(ref loadState, 1) == 1) { return; }
             try
             {
-                string json = await http.GetStringAsync(MetaUrl);
+                string json = await http.GetStringAsync(MetaUrl).ConfigureAwait(false);
                 LatestVersion = Field(json, "latest");
                 ReleaseUrl = Field(json, "url") ?? ReleaseUrl;
                 Kofi = Field(json, "kofi");
@@ -101,7 +101,10 @@ namespace LobbyLens
         {
             Match m = Regex.Match(json, "\"" + name + "\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
             string v = m.Success ? m.Groups[1].Value.Trim() : null;
-            return string.IsNullOrWhiteSpace(v) ? null : v;
+            if (string.IsNullOrWhiteSpace(v)) { return null; }
+            // publishers JSON-escape non-ASCII (e.g. a standDown message) — decode it
+            if (v.IndexOf('\\') >= 0) { try { v = Regex.Unescape(v); } catch { } }
+            return v;
         }
     }
 }

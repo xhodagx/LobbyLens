@@ -1,8 +1,11 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Collections.Generic;
+using Microsoft.Win32;
 using ScryDotNet;
 
 namespace LobbyLens
@@ -21,7 +24,7 @@ namespace LobbyLens
     public class GameMemory
     {
         // Last known-good Unity version, used only if reading the real one fails.
-        private const string FallbackUnityVersion = "2021.3.25.61228";
+        private const string FallbackUnityVersion = "2022.3.62.7762112"; // 2022.3.62f2, current client as of 2026-07
 
         private static string _detectedUnity;
         private MonoImage _image;
@@ -60,8 +63,10 @@ namespace LobbyLens
                     LogOnChange("[mem] BnetPresenceMgr.s_instance => null");
                     return null;
                 }
-                _myName = presence?["m_myPlayer"]?["m_account"]?["m_battleTag"]?["m_name"];
-                LogOnChange($"[mem] own battletag => '{_myName ?? "null"}'");
+                string name = presence?["m_myPlayer"]?["m_account"]?["m_battleTag"]?["m_name"];
+                // cache only a real value — a transient empty read must not stick for the match
+                if (!string.IsNullOrWhiteSpace(name)) { _myName = name; }
+                LogOnChange($"[mem] own battletag => '{name ?? "null"}'");
                 return _myName;
             }
         }
@@ -235,11 +240,60 @@ namespace LobbyLens
 
         private static IEnumerable<string> CandidateGameDirs(Process proc)
         {
+            // HDT is 32-bit and the game is 64-bit, so Process.MainModule throws
+            // cross-bitness — QueryFullProcessImageName is the bitness-proof read.
             string fromProcess = null;
-            try { fromProcess = Path.GetDirectoryName(proc.MainModule.FileName); }
-            catch { /* cross-bitness module access can fail */ }
+            try
+            {
+                string exe = ProcessImagePath(proc.Id) ?? proc.MainModule.FileName;
+                fromProcess = Path.GetDirectoryName(exe);
+            }
+            catch { }
             if (fromProcess != null) { yield return fromProcess; }
+
+            // Custom install locations (other drive, moved Battle.net library).
+            string fromRegistry = RegistryInstallDir();
+            if (fromRegistry != null) { yield return fromRegistry; }
+
             yield return @"C:\Program Files (x86)\Hearthstone";
+        }
+
+        // Battle.net's installer is 32-bit, so its uninstall entry lives in the
+        // 32-bit registry view regardless of who is asking.
+        private static string RegistryInstallDir()
+        {
+            try
+            {
+                using RegistryKey hklm32 = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32);
+                using RegistryKey key = hklm32.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Hearthstone");
+                string dir = key?.GetValue("InstallLocation") as string;
+                return string.IsNullOrWhiteSpace(dir) ? null : dir;
+            }
+            catch { return null; }
+        }
+
+        private const int ProcessQueryLimitedInformation = 0x1000;
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr OpenProcess(int desiredAccess, bool inheritHandle, int processId);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool CloseHandle(IntPtr handle);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern bool QueryFullProcessImageName(IntPtr process, int flags, StringBuilder exeName, ref int size);
+
+        private static string ProcessImagePath(int pid)
+        {
+            IntPtr h = OpenProcess(ProcessQueryLimitedInformation, false, pid);
+            if (h == IntPtr.Zero) { return null; }
+            try
+            {
+                var sb = new StringBuilder(1024);
+                int size = sb.Capacity;
+                return QueryFullProcessImageName(h, 0, sb, ref size) ? sb.ToString(0, size) : null;
+            }
+            finally { CloseHandle(h); }
         }
 
         private void LogOnChange(string msg)

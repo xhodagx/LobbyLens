@@ -66,7 +66,7 @@ namespace LobbyLens
                 sb.Append("]}");
 
                 using var content = new StringContent(sb.ToString(), Encoding.UTF8, "application/json");
-                using HttpResponseMessage resp = await http.PostAsync(IngestUrl, content);
+                using HttpResponseMessage resp = await http.PostAsync(IngestUrl, content).ConfigureAwait(false);
                 LensLog.Debug($"match report -> {(int)resp.StatusCode}");
             }
             catch (Exception ex)

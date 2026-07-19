@@ -57,6 +57,9 @@ namespace LobbyLens
             return false;
         }
 
+        // ConfigureAwait(false) throughout this class: HDT drives the caller on its UI
+        // thread, and parsing a full board (up to tens of MB on the direct-Blizzard
+        // fallback) must never run there.
         public async Task Load(string region, bool duos)
         {
             Ready = false;
@@ -87,7 +90,7 @@ namespace LobbyLens
             // Primary source: the LobbyLens backend (one small cached file).
             try
             {
-                var lens = await FetchFromLens(region, duos);
+                var lens = await FetchFromLens(region, duos).ConfigureAwait(false);
                 if (lens != null && lens.Count > 0)
                 {
                     _byName = lens;
@@ -105,7 +108,7 @@ namespace LobbyLens
             // Fallback: fetch directly from Blizzard's API (paged).
             try
             {
-                var fresh = await FetchAll(region, duos);
+                var fresh = await FetchAll(region, duos).ConfigureAwait(false);
                 if (fresh.Count > 0)
                 {
                     _byName = fresh;
@@ -131,7 +134,7 @@ namespace LobbyLens
         private async Task<Dictionary<string, Entry>> FetchFromLens(string region, bool duos)
         {
             string url = $"{LensBaseUrl}leaderboard_{region}{(duos ? "_duo" : "")}.json";
-            string body = await _http.GetStringAsync(url);
+            string body = await _http.GetStringAsync(url).ConfigureAwait(false);
             if (string.IsNullOrWhiteSpace(body)) { return null; }
 
             Match ts = LensTsRx.Match(body);
@@ -179,7 +182,7 @@ namespace LobbyLens
 
         private async Task<Dictionary<string, Entry>> FetchAll(string region, bool duos)
         {
-            string first = await FetchPage(region, duos, 1);
+            string first = await FetchPage(region, duos, 1).ConfigureAwait(false);
             var pages = new List<string> { first };
 
             int totalPages = 1;
@@ -196,12 +199,12 @@ namespace LobbyLens
                     int page = p;
                     tasks.Add(Task.Run(async () =>
                     {
-                        await gate.WaitAsync();
-                        try { return await FetchPage(region, duos, page); }
+                        await gate.WaitAsync().ConfigureAwait(false);
+                        try { return await FetchPage(region, duos, page).ConfigureAwait(false); }
                         finally { gate.Release(); }
                     }));
                 }
-                pages.AddRange(await Task.WhenAll(tasks));
+                pages.AddRange(await Task.WhenAll(tasks).ConfigureAwait(false));
             }
 
             var result = new Dictionary<string, Entry>();
@@ -232,7 +235,7 @@ namespace LobbyLens
         {
             string board = duos ? "battlegroundsduo" : "battlegrounds";
             string url = $"{BaseUrl}?region={region}&leaderboardId={board}&page={page}";
-            return await _http.GetStringAsync(url);
+            return await _http.GetStringAsync(url).ConfigureAwait(false);
         }
 
         private static string CachePath(string region, bool duos)

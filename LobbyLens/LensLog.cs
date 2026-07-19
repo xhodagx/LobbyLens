@@ -11,10 +11,9 @@ namespace LobbyLens
         private static string _folder;
         private static bool _debug;
 
-        public static void Init(string folder, bool debugEnabled)
+        public static void Init(string folder)
         {
             _folder = folder;
-            _debug = debugEnabled;
             try { Directory.CreateDirectory(_folder); }
             catch { _folder = Path.GetTempPath(); }
             Prune();

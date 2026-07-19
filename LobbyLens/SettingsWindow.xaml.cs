@@ -147,8 +147,9 @@ namespace LobbyLens
             Settings.Instance.positionTop = 0.0;
             Settings.Instance.panelWidth = 0.0;
             Settings.Instance.ifLoad = false;
+            onResetLayout?.Invoke(); // may recompute scaleRatio from the overlay size
             Settings.Save();
-            onResetLayout?.Invoke();
+            ScaleSlider.Value = Math.Max(0.5, Math.Min(Settings.Instance.scaleRatio, 3.0));
             Settings.NotifyChanged();
         }
 
@@ -166,8 +167,16 @@ namespace LobbyLens
             SupportPanel.Visibility = any ? Visibility.Visible : Visibility.Collapsed;
         }
 
+        // Values here come from the remote meta.json. The blob is a dumb pipe that
+        // must never be able to launch anything but a browser, so only https URLs
+        // are ever handed to the shell.
         private static void OpenUrl(string url)
         {
+            if (url == null || !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                LensLog.Warn($"refusing to open non-https url: {url ?? "(null)"}");
+                return;
+            }
             try { Process.Start(url); }
             catch (Exception ex) { LensLog.Debug($"failed to open url: {ex.Message}"); }
         }

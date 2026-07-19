@@ -28,7 +28,7 @@ namespace LobbyLens
 
         public void OnLoad()
         {
-            LensLog.Init(Settings.DataDir, true);
+            LensLog.Init(Settings.DataDir);
             Settings.Load();
             LensLog.SetDebug(Settings.Instance.debugLog);
             LensLog.Info($"LobbyLens v{Version} loaded");
@@ -64,7 +64,7 @@ namespace LobbyLens
             MenuItem.Checked += (sender, args) => tracker ??= new LobbyTracker();
             MenuItem.Unchecked += (sender, args) =>
             {
-                tracker?.Clean(true);
+                tracker?.Clean();
                 tracker = null;
             };
         }
