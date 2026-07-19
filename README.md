@@ -32,6 +32,8 @@ No Overwolf, no ads, one DLL.
   edges to set width (double-click an edge for auto-width), drag the bottom-right
   corner to zoom.
 
+<p align="center"><img src="assets/settings.png" width="300" alt="The LobbyLens settings window: sliders, feature toggles, privacy opt-out, and tip links"/><br/><sub>Settings</sub></p>
+
 ## Install
 
 1. Download the latest `LobbyLens-vX.Y.Z.zip` from the [Releases page](https://github.com/xhodagx/LobbyLens/releases) and unzip it
