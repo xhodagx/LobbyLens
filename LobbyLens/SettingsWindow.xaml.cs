@@ -48,7 +48,7 @@ namespace LobbyLens
             ScaleSlider.Value = Math.Max(0.5, Math.Min(Settings.Instance.scaleRatio, 3.0));
             SortByPlaceBox.IsChecked = Settings.Instance.sortByPlace;
             BestFirstBox.IsChecked = Settings.Instance.bestFirst;
-            DebugBox.IsChecked = Settings.Instance.debugLog;
+            DebugBox.IsChecked = Settings.Instance.verboseLog;
             RankNumbersBox.IsChecked = Settings.Instance.showRankNumbers;
             HeroInfoBox.IsChecked = Settings.Instance.showHeroInfo;
             CompsBox.IsChecked = Settings.Instance.showComps;
@@ -110,8 +110,8 @@ namespace LobbyLens
         private void DebugBox_Changed(object sender, RoutedEventArgs e)
         {
             if (!ready) { return; }
-            Settings.Instance.debugLog = DebugBox.IsChecked == true;
-            LensLog.SetDebug(Settings.Instance.debugLog);
+            Settings.Instance.verboseLog = DebugBox.IsChecked == true;
+            LensLog.SetDebug(Settings.Instance.verboseLog);
             Settings.NotifyChanged();
         }
 

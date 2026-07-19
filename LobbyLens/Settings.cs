@@ -15,7 +15,9 @@ namespace LobbyLens
         public double opacity = 1.0;
         public bool bestFirst = true;
         public bool sortByPlace = true;
-        public bool debugLog = false; // opt-in; existing installs keep their saved value
+        // Renamed from debugLog in v1.5.2 so the always-on-era saved value is dropped:
+        // verbose logging is OFF for every install unless re-enabled in Settings.
+        public bool verboseLog = false;
         public bool showRankNumbers = true;
         public bool showHeroInfo = true;
         public bool showComps = true;

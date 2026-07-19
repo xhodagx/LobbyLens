@@ -30,7 +30,7 @@ namespace LobbyLens
         {
             LensLog.Init(Settings.DataDir);
             Settings.Load();
-            LensLog.SetDebug(Settings.Instance.debugLog);
+            LensLog.SetDebug(Settings.Instance.verboseLog);
             LensLog.Info($"LobbyLens v{Version} loaded");
             Updater.CleanupStaleFiles();
             CreateMenuItem();
