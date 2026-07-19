@@ -16,6 +16,8 @@ No Overwolf, no ads, one DLL.
 - **Board composition** of each opponent's last-fought board (`4 Mech · 2 Beast — t9`)
 - **Live standings order** — rows reorder as rail places shift; rating sort available
 - **Eliminations** — strikethrough + final place, hardened against false positives
+- **Session tracker** — a running header line: games played, average finish, and net
+  MMR for your current session (toggle in Settings)
 - **Duos** — team grouping, shared-pool health, team placements
 - Settings window: font size, opacity, panel scale, sort mode, per-feature toggles,
   privacy, verbose logging, position reset — opens in-game from the panel's ⚙ (or
