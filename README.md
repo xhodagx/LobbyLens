@@ -25,6 +25,12 @@ No Overwolf, no ads, one DLL.
 - **Live standings order** — rows reorder as rail places shift; rating sort available
 - **Next opponent marker** — the player (or duos team) you fight next is tagged `(next)`,
   ghost boards included
+- **Lobby average** — a header line with the table's average rating and your delta to it
+- **Recent form** — each opponent's recent average placement, from the community's
+  anonymized match data (opt-in) — no third-party site, no accounts
+- **Encounter counts** — how many times you've fought each player this match (`×N`),
+  with a `(last)` marker on your most recent opponent
+- **Collapse to a pill** — shrink the panel to a small draggable badge; click to expand
 - **Eliminations** — strikethrough + final place, hardened against false positives
 - **Session tracker** — a running header line: games played, average finish, and net
   MMR for your current session (toggle in Settings)
@@ -68,6 +74,9 @@ Maintainer release process: [RELEASING.md](RELEASING.md).
   into one cached file per region/mode; if it's ever unreachable, the plugin falls back
   to Blizzard's API directly, so ratings keep working regardless. Backend source:
   [lobbylens-functions](https://github.com/xhodagx/lobbylens-functions).
+- **Recent form** comes from the same backend, aggregated from anonymized match reports.
+  The plugin looks it up by the **hashed** battletag only — the raw name never leaves your
+  PC — so it reads back nothing but an aggregate of already-anonymized, opt-in data.
 - **Everything else** (hero, tier, health, board comps, eliminations, standings) comes from
   HDT's game state and the game client's own UI memory — the same data the native rail
   hover uses. None of it leaves your PC.
