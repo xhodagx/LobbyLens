@@ -44,6 +44,29 @@ namespace LobbyLens
             public string AccountId;    // "hi:lo" — stable, name-change-proof identity
         }
 
+        // Reflected access to HDT's bundled HearthMirror, resolved once. This is the
+        // maintained, patch-tracked path HDT itself uses for the lobby roster; we call
+        // it by reflection so LobbyLens keeps its single-DLL, no-extra-reference design
+        // and never fails to load if a host update reshapes the assembly. Our own Scry
+        // walk (ReadLobbyInfoScry) stays as the fallback when this returns nothing.
+        private static bool _mirrorProbed;
+        private static System.Reflection.PropertyInfo _mirrorClient;
+        private static System.Reflection.MethodInfo _mirrorGetLobby;
+
+        private static void ProbeMirror()
+        {
+            _mirrorProbed = true;
+            try
+            {
+                Type refl = Type.GetType("HearthMirror.Reflection, HearthMirror");
+                _mirrorClient = refl?.GetProperty("Client",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                Type iface = _mirrorClient?.PropertyType;
+                _mirrorGetLobby = iface?.GetMethod("GetBattlegroundsLobbyInfo", Type.EmptyTypes);
+            }
+            catch { }
+        }
+
         public void Reset()
         {
             _image?.Dispose();
@@ -100,6 +123,62 @@ namespace LobbyLens
         // ritual, falling back to the tiles when it's empty or partial. Best-effort:
         // any miss yields an empty list, never throws into the update loop.
         public List<LobbyPlayer> ReadLobbyInfo()
+        {
+            // Prefer HDT's maintained HearthMirror roster; fall back to our own Scry
+            // walk only when it yields nothing (e.g. an older HDT without the API).
+            var mirror = ReadLobbyInfoMirror();
+            if (mirror.Count > 0) { return mirror; }
+            return ReadLobbyInfoScry();
+        }
+
+        // HDT-native roster via reflected HearthMirror.Reflection.Client.GetBattlegroundsLobbyInfo().
+        private List<LobbyPlayer> ReadLobbyInfoMirror()
+        {
+            var result = new List<LobbyPlayer>();
+            try
+            {
+                if (!_mirrorProbed) { ProbeMirror(); }
+                if (_mirrorClient == null || _mirrorGetLobby == null) { return result; }
+
+                object client = _mirrorClient.GetValue(null);
+                if (client == null) { return result; }
+                dynamic info = _mirrorGetLobby.Invoke(client, null);
+                var players = info?.Players;
+                if (players == null) { return result; }
+
+                foreach (var p in players)
+                {
+                    string name = p?.Name;
+                    if (string.IsNullOrWhiteSpace(name)) { continue; }
+                    int hash = name.IndexOf('#');
+                    if (hash > 0) { name = name.Substring(0, hash); }
+
+                    string hero = p?.HeroCardId;
+                    string acct = null;
+                    var aid = p?.AccountId;
+                    if (aid != null)
+                    {
+                        try { acct = aid.Hi.ToString() + ":" + aid.Lo.ToString(); } catch { }
+                    }
+
+                    result.Add(new LobbyPlayer
+                    {
+                        Name = name,
+                        HeroCardId = string.IsNullOrWhiteSpace(hero) ? null : hero,
+                        AccountId = string.IsNullOrWhiteSpace(acct) ? null : acct
+                    });
+                }
+                if (result.Count > 0) { LogOnChange($"[mem] lobby roster via HearthMirror ({result.Count})"); }
+            }
+            catch (Exception ex)
+            {
+                LogOnChange($"[mem] HearthMirror lobby read failed: {ex.GetType().Name}");
+            }
+            return result;
+        }
+
+        // Fallback: direct Scry walk of GameState.m_playerInfoMap (our original path).
+        private List<LobbyPlayer> ReadLobbyInfoScry()
         {
             var result = new List<LobbyPlayer>();
             try

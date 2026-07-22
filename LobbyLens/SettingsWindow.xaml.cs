@@ -9,11 +9,11 @@ namespace LobbyLens
         // Singleton opener shared by HDT's plugin-list button and the panel's ⚙.
         private static SettingsWindow open;
 
-        public static void Open(Action onResetLayout)
+        public static void Open(Action onResetLayout, Action onPreview = null)
         {
             if (open == null || !open.IsLoaded)
             {
-                open = new SettingsWindow(onResetLayout);
+                open = new SettingsWindow(onResetLayout, onPreview);
                 open.Show();
             }
             open.Activate();
@@ -26,12 +26,14 @@ namespace LobbyLens
         }
 
         private readonly Action onResetLayout;
+        private readonly Action onPreview;
         private bool ready = false;
 
-        public SettingsWindow(Action onResetLayout)
+        public SettingsWindow(Action onResetLayout, Action onPreview = null)
         {
             InitializeComponent();
             this.onResetLayout = onResetLayout;
+            this.onPreview = onPreview;
             ApplyMeta();
             if (!Meta.LoadCompletion.IsCompleted)
             {
@@ -54,6 +56,9 @@ namespace LobbyLens
             CompsBox.IsChecked = Settings.Instance.showComps;
             EliminationsBox.IsChecked = Settings.Instance.showEliminations;
             NextOpponentBox.IsChecked = Settings.Instance.showNextOpponent;
+            EncountersBox.IsChecked = Settings.Instance.showEncounters;
+            LobbyAvgBox.IsChecked = Settings.Instance.showLobbyAvg;
+            FormBox.IsChecked = Settings.Instance.showForm;
             SessionBox.IsChecked = Settings.Instance.showSession;
             ReportMatchesBox.IsChecked = Settings.Instance.reportMatches;
             AutoUpdateBox.IsChecked = Settings.Instance.autoUpdate;
@@ -124,6 +129,9 @@ namespace LobbyLens
             Settings.Instance.showComps = CompsBox.IsChecked == true;
             Settings.Instance.showEliminations = EliminationsBox.IsChecked == true;
             Settings.Instance.showNextOpponent = NextOpponentBox.IsChecked == true;
+            Settings.Instance.showEncounters = EncountersBox.IsChecked == true;
+            Settings.Instance.showLobbyAvg = LobbyAvgBox.IsChecked == true;
+            Settings.Instance.showForm = FormBox.IsChecked == true;
             Settings.Instance.showSession = SessionBox.IsChecked == true;
             Settings.NotifyChanged();
         }
@@ -140,6 +148,11 @@ namespace LobbyLens
             if (!ready) { return; }
             Settings.Instance.autoUpdate = AutoUpdateBox.IsChecked == true;
             Settings.NotifyChanged();
+        }
+
+        private void PreviewButton_Click(object sender, RoutedEventArgs e)
+        {
+            onPreview?.Invoke();
         }
 
         private void ResetButton_Click(object sender, RoutedEventArgs e)

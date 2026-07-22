@@ -30,6 +30,7 @@ namespace LobbyLens
 
         private bool isFirst = true;
         private bool isChange = false;
+        private bool pillClickCandidate = false;
         private GripZone mouseMode = GripZone.None;
         private Point originalGridPosition;
         private Point originalMousePosition;
@@ -80,6 +81,23 @@ namespace LobbyLens
             Visibility = Visibility.Hidden;
         }
 
+        // Live preview: render a representative lobby so the panel can be positioned and
+        // scaled from Settings without starting a match. Uses invented names only.
+        public void ShowPreview()
+        {
+            if (collapsed) { SetCollapsed(false); }
+            var lines = new List<RankLine>
+            {
+                new RankLine("Lobby avg 9240 · you +180", dim: true),
+                new RankLine("Quillstone (next) ×2") { Right = "11240", RightDim = "#389 · avg 3.2",
+                    Sub = "Zephrys, the Great · T5 · 28♥", Sub2 = "3 Dragon · 2 Naga — t9" },
+                new RankLine("Rime") { Right = "10663", RightDim = "#228 · avg 4.1",
+                    Sub = "Malygos · T6 · 31♥+4" },
+                new RankLine("(6th) Copperjaw", dead: true) { Right = "8000↓" },
+            };
+            DisplayLines(lines);
+        }
+
         public void DisplayLines(List<RankLine> lines)
         {
             if (isFirst)
@@ -95,11 +113,10 @@ namespace LobbyLens
                 RowsHost.Children.Add(BuildRow(line));
             }
 
-            if (RowsHost.Visibility != Visibility.Visible)
+            if (RowsHost.Visibility != Visibility.Visible && !collapsed)
             {
-                // The minimize button collapses the rows; restore on fresh content so a
-                // minimized panel can never silently swallow a new match's display.
-                LensLog.Debug("rows were minimized — restoring for new display");
+                // Legacy safety: if rows were hidden without the pill state, restore them
+                // so a new match's display can never be silently swallowed.
                 RowsHost.Visibility = Visibility.Visible;
             }
             Visibility = Visibility.Visible;
@@ -216,12 +233,30 @@ namespace LobbyLens
 
         private void GearButton_Click(object sender, RoutedEventArgs e)
         {
-            SettingsWindow.Open(ResetLayout);
+            SettingsWindow.Open(ResetLayout, ShowPreview);
         }
+
+        // Collapse to a compact low-opacity pill (title + close only), restoring on a
+        // click anywhere on it. Position and collapsed state persist across the match.
+        private bool collapsed = false;
 
         private void MinimizeButton_Click(object sender, RoutedEventArgs e)
         {
-            RowsHost.Visibility = RowsHost.IsVisible ? Visibility.Collapsed : Visibility.Visible;
+            SetCollapsed(true);
+        }
+
+        private void SetCollapsed(bool value)
+        {
+            collapsed = value;
+            RowsHost.Visibility = value ? Visibility.Collapsed : Visibility.Visible;
+            TitleText.Text = value ? "LOBBYLENS" : "OPPONENT MMR";
+            GearButton.Visibility = MinimizeButton.Visibility = value ? Visibility.Collapsed : Visibility.Visible;
+            RestoreHint.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+            RootGrid.Opacity = value ? Math.Min(0.45, Settings.Instance.opacity) : Settings.Instance.opacity;
+            PanelBorder.Width = value ? double.NaN : (Settings.Instance.panelWidth > 0
+                ? Math.Max(MinPanelWidth, Math.Min(Settings.Instance.panelWidth, MaxPanelWidth)) : double.NaN);
+            isChange = true;
+            LensLog.Debug($"panel {(value ? "collapsed to pill" : "restored")}");
         }
 
         // Grip zones in PanelBorder-local (unscaled) units; the threshold is divided
@@ -246,6 +281,17 @@ namespace LobbyLens
 
         private void PanelBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (collapsed)
+            {
+                // a click that isn't a drag restores; a drag just moves the pill
+                mouseMode = GripZone.Move;
+                originalMousePosition = e.GetPosition(this);
+                originalGridPosition = new Point(RootGrid.Margin.Left, RootGrid.Margin.Top);
+                pillClickCandidate = true;
+                PanelBorder.CaptureMouse();
+                return;
+            }
+
             GripZone zone = ZoneAt(e);
 
             if (e.ClickCount == 2 && (zone == GripZone.EdgeE || zone == GripZone.EdgeW))
@@ -269,6 +315,8 @@ namespace LobbyLens
         {
             mouseMode = GripZone.None;
             if (PanelBorder.IsMouseCaptured) { PanelBorder.ReleaseMouseCapture(); }
+            if (collapsed && pillClickCandidate) { SetCollapsed(false); }
+            pillClickCandidate = false;
         }
 
         private void PanelBorder_MouseLeave(object sender, MouseEventArgs e)
@@ -301,6 +349,9 @@ namespace LobbyLens
             Point cur = e.GetPosition(this);
             double dx = cur.X - originalMousePosition.X;
             double dy = cur.Y - originalMousePosition.Y;
+
+            // any real movement while collapsed means "drag the pill", not "restore"
+            if (pillClickCandidate && (Math.Abs(dx) > 3 || Math.Abs(dy) > 3)) { pillClickCandidate = false; }
 
             switch (mouseMode)
             {

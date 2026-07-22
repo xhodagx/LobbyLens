@@ -28,6 +28,9 @@ namespace LobbyLens
             public int DeadSweeps;     // consecutive sweeps reading health <= 0
             public int LivePlace;      // current rail position
             public bool NextOpponent;  // we fight this player (or their ghost) next
+            public bool PrevOpponent;  // most recently fought (last combat)
+            public int Encounters;     // completed combats fought against this player
+            public string NameHash;    // cached SHA of Name, for form lookups
         }
 
         private bool isReset = true;
@@ -44,6 +47,7 @@ namespace LobbyLens
         private double tileSweepBackoff = 1; // seconds; 1 while resolution progresses, up to 5 when stalled
         private int lastResolvedCount = -1;
         private int lastTileCount = -1;
+        private bool formRequested = false;
 
         private List<PlayerInfo> players = null;
         private bool reported = false;
@@ -51,15 +55,17 @@ namespace LobbyLens
         private GameMemory memory;
         private HttpClient http;
         private Leaderboard leaderboard;
+        private FormStats form;
         private LobbyPanel panel;
 
         public LobbyTracker()
         {
             http = new HttpClient();
-            http.DefaultRequestHeaders.Add("User-Agent", "LobbyLens/1.0 (HDT plugin)");
+            http.DefaultRequestHeaders.Add("User-Agent", $"LobbyLens/{typeof(LobbyTracker).Assembly.GetName().Version} (HDT plugin)");
             http.Timeout = TimeSpan.FromSeconds(20);
             memory = new GameMemory();
             leaderboard = new Leaderboard(http);
+            form = new FormStats(http);
             panel = new LobbyPanel();
             _ = Meta.Load(http);
         }
@@ -72,12 +78,19 @@ namespace LobbyLens
             http = null;
             memory = null;
             leaderboard = null;
+            form = null;
             panel = null;
         }
 
         public void ResetLayout()
         {
             panel?.ResetLayout();
+        }
+
+        // Position/scale the panel from Settings without a live match.
+        public void ShowPreview()
+        {
+            panel?.ShowPreview();
         }
 
         private void Reset()
@@ -92,6 +105,7 @@ namespace LobbyLens
             lastStatusSweep = DateTime.MinValue;
             lastTileSweep = DateTime.MinValue;
             lastNextPid = 0;
+            formRequested = false;
             tileSweepBackoff = 1;
             lastResolvedCount = -1;
             lastTileCount = -1;
@@ -194,6 +208,7 @@ namespace LobbyLens
                 bool needSweep = !namesDone || players.Any(p => p.AccountId == null);
                 if (needSweep && (DateTime.Now - lastTileSweep).TotalSeconds >= tileSweepBackoff) { ResolveTiles(); }
                 UpdateLiveStatus();
+                TryLoadForm();
                 Render();
             }
         }
@@ -222,6 +237,24 @@ namespace LobbyLens
                 }
             }
             if (place > 0) { Session.OnGameEnd(place); }
+        }
+
+        // Once names are resolved, ask the backend for each player's recent form, one
+        // batched request per match. By hash only — the same hashes we already report.
+        private void TryLoadForm()
+        {
+            if (formRequested || !Settings.Instance.showForm || players == null) { return; }
+            if (players.Any(p => p.Name == null)) { return; } // wait for a full roster
+            formRequested = true;
+            var hashes = new List<string>();
+            foreach (var p in players)
+            {
+                if (p.IsMe) { continue; }
+                if (p.NameHash == null && p.Name != null) { p.NameHash = MatchReporter.HashName(p.Name); }
+                if (p.NameHash != null) { hashes.Add(p.NameHash); }
+                if (p.AccountId != null) { hashes.Add(MatchReporter.HashName(p.AccountId)); }
+            }
+            _ = form.Load(hashes);
         }
 
         private static int? SafeBgRating()
@@ -304,7 +337,7 @@ namespace LobbyLens
                 // Carry live state across the rebuild.
                 if (players != null)
                 {
-                    foreach (var oldP in players.Where(x => x.FinalPlace != 0 || x.HeroName != null || x.Tier > 0 || x.NextOpponent))
+                    foreach (var oldP in players.Where(x => x.FinalPlace != 0 || x.HeroName != null || x.Tier > 0 || x.NextOpponent || x.Encounters > 0))
                     {
                         var match = tmp.FirstOrDefault(x =>
                             (oldP.Name != null && x.Name == oldP.Name) ||
@@ -322,6 +355,9 @@ namespace LobbyLens
                             match.LivePlace = oldP.LivePlace;
                             match.DeadSweeps = oldP.DeadSweeps;
                             match.NextOpponent = oldP.NextOpponent;
+                            match.PrevOpponent = oldP.PrevOpponent;
+                            match.Encounters = oldP.Encounters;
+                            match.NameHash = oldP.NameHash;
                         }
                     }
                 }
@@ -444,18 +480,23 @@ namespace LobbyLens
                     }
 
                     // Tribe composition of the last board we fought (the same knowledge
-                    // the native rail hover shows; exists only for opponents faced).
-                    if (!p.IsMe && p.FinalPlace == 0)
+                    // the native rail hover shows; exists only for opponents faced). A
+                    // fresh snapshot turn is also proof of a completed combat vs this
+                    // player, so it drives the encounter counter + last-fought marker.
+                    if (!p.IsMe)
                     {
                         var snap = Core.Game.GetBattlegroundsBoardStateFor(entity.Id);
                         if (snap?.Entities != null && snap.Entities.Length > 0 && snap.Turn != p.CompTurn)
                         {
+                            if (p.CompTurn > 0 || snap.Turn > 0) { p.Encounters++; }
+                            p.CompTurn = snap.Turn;
+                            foreach (var other in players) { other.PrevOpponent = false; }
+                            p.PrevOpponent = true;
                             string comp = ComputeComp(snap.Entities);
                             if (comp != null)
                             {
                                 p.Comp = comp;
-                                p.CompTurn = snap.Turn;
-                                LensLog.Debug($"comp: {p.Name ?? cardId} t{snap.Turn}: {comp}");
+                                LensLog.Debug($"comp: {p.Name ?? cardId} t{snap.Turn} (#{p.Encounters}): {comp}");
                             }
                         }
                     }
@@ -507,6 +548,30 @@ namespace LobbyLens
                 if (sess != null) { lines.Add(new RankLine(sess, dim: true)); }
             }
 
+            // Lobby strength: average rating of rated players, and my delta to it — the
+            // one-glance "how hard is this table" read. Rated = a real rating we know.
+            if (Settings.Instance.showLobbyAvg)
+            {
+                var rated = new List<int>();
+                int mine = 0;
+                foreach (var p in players)
+                {
+                    if (p.Name == null) { continue; }
+                    if (leaderboard.TryGet(p.Name, out int r, out _) && r > 0)
+                    {
+                        rated.Add(r);
+                        if (p.IsMe) { mine = r; }
+                    }
+                }
+                if (rated.Count >= 3)
+                {
+                    int avg = (int)Math.Round(rated.Average());
+                    string head = $"Lobby avg {avg}";
+                    if (mine > 0) { int d = mine - avg; head += $" · you {(d >= 0 ? "+" : "")}{d}"; }
+                    lines.Add(new RankLine(head, dim: true));
+                }
+            }
+
             var teamGroups = players.GroupBy(p => p.Team);
             if (Settings.Instance.sortByPlace)
             {
@@ -529,8 +594,14 @@ namespace LobbyLens
                     if (p.Name == null) { continue; }  // unresolved: the footer counts them
 
                     bool markDead = Settings.Instance.showEliminations && p.FinalPlace != 0;
-                    string left = p.Name + (p.IsMe ? " (you)" : "")
-                        + (Settings.Instance.showNextOpponent && p.NextOpponent ? " (next)" : "");
+                    string marker = "";
+                    if (Settings.Instance.showNextOpponent && p.NextOpponent) { marker = " (next)"; }
+                    else if (Settings.Instance.showEncounters && p.PrevOpponent && p.FinalPlace == 0) { marker = " (last)"; }
+                    string left = p.Name + (p.IsMe ? " (you)" : "") + marker;
+                    if (Settings.Instance.showEncounters && !p.IsMe && p.Encounters > 0)
+                    {
+                        left += $" ×{p.Encounters}";
+                    }
                     if (markDead && p.FinalPlace > 0) { left = $"({Ordinal(p.FinalPlace)}) {left}"; }
                     RankLine line = new RankLine(left, dead: markDead)
                     {
@@ -543,6 +614,17 @@ namespace LobbyLens
                         if (p.Tier > 0) { sub += (sub.Length > 0 ? " · " : "") + $"T{p.Tier}"; }
                         if (p.Health > 0) { sub += (sub.Length > 0 ? " · " : "") + $"{p.Health}♥" + (p.Armor > 0 ? $"+{p.Armor}" : ""); }
                         line.Sub = sub.Length > 0 ? sub : null;
+                    }
+                    // Recent form (community avg placement) as a dim right-column suffix,
+                    // shown when we have history and it isn't crowded out by a rank number.
+                    if (Settings.Instance.showForm && !p.IsMe && p.FinalPlace == 0)
+                    {
+                        string hash = p.NameHash ?? (p.Name != null ? MatchReporter.HashName(p.Name) : null);
+                        if (hash != null && form.TryGet(hash, out FormStats.Entry fe))
+                        {
+                            string avg = $"avg {fe.AvgPlace:0.0}";
+                            line.RightDim = line.RightDim == null ? avg : line.RightDim + " · " + avg;
+                        }
                     }
                     if (p.FinalPlace == 0 && Settings.Instance.showComps && p.Comp != null)
                     {
@@ -578,7 +660,7 @@ namespace LobbyLens
             }
 
             string sig = string.Join("|", lines.Select(l => l.Text + "/" + l.Sub + "/" + l.Sub2 + "/" + l.Right + "/" + l.RightDim + (l.Dead ? "D" : "") + (l.Dim ? "~" : "") + (l.Divider ? "=" : "")))
-                + $"#{Settings.Instance.showRankNumbers}{Settings.Instance.showHeroInfo}{Settings.Instance.showComps}{Settings.Instance.showEliminations}{Settings.Instance.bestFirst}{Settings.Instance.sortByPlace}{Settings.Instance.fontSize}";
+                + $"#{Settings.Instance.showRankNumbers}{Settings.Instance.showHeroInfo}{Settings.Instance.showComps}{Settings.Instance.showEliminations}{Settings.Instance.bestFirst}{Settings.Instance.sortByPlace}{Settings.Instance.fontSize}{Settings.Instance.showLobbyAvg}{Settings.Instance.showEncounters}{Settings.Instance.showForm}";
             if (sig == lastRender) { return; }
             lastRender = sig;
             panel.DisplayLines(lines);

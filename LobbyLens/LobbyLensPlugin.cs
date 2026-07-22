@@ -23,7 +23,7 @@ namespace LobbyLens
 
         public void OnButtonPress()
         {
-            SettingsWindow.Open(() => tracker?.ResetLayout());
+            SettingsWindow.Open(() => tracker?.ResetLayout(), () => tracker?.ShowPreview());
         }
 
         public void OnLoad()

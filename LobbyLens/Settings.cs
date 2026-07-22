@@ -23,6 +23,9 @@ namespace LobbyLens
         public bool showComps = true;
         public bool showEliminations = true;
         public bool showNextOpponent = true;  // "(next)" marker on the upcoming combat opponent
+        public bool showEncounters = true;    // "(last)" marker + ×N combats-fought counter
+        public bool showLobbyAvg = true;      // header line: lobby average rating and your delta
+        public bool showForm = true;          // community recent-average-placement per player
         public bool showSession = true;   // running session line (games / avg place / net MMR)
         public bool reportMatches = true; // contribute anonymized match summaries to the backend
         public bool autoUpdate = true;    // stage signed releases automatically; they apply on HDT restart

@@ -33,12 +33,16 @@
         <CheckBox x:Name="CompsBox" Content="Board minion types" Checked="FeatureBox_Changed" Unchecked="FeatureBox_Changed" Margin="0,2,0,4"/>
         <CheckBox x:Name="EliminationsBox" Content="Mark eliminated players" Checked="FeatureBox_Changed" Unchecked="FeatureBox_Changed" Margin="0,2,0,4"/>
         <CheckBox x:Name="NextOpponentBox" Content="Mark next combat opponent (next)" Checked="FeatureBox_Changed" Unchecked="FeatureBox_Changed" Margin="0,2,0,4"/>
+        <CheckBox x:Name="EncountersBox" Content="Encounter counts and last opponent (×N, last)" Checked="FeatureBox_Changed" Unchecked="FeatureBox_Changed" Margin="0,2,0,4"/>
+        <CheckBox x:Name="LobbyAvgBox" Content="Lobby average rating and your delta" Checked="FeatureBox_Changed" Unchecked="FeatureBox_Changed" Margin="0,2,0,4"/>
+        <CheckBox x:Name="FormBox" Content="Recent form (community avg placement)" Checked="FeatureBox_Changed" Unchecked="FeatureBox_Changed" Margin="0,2,0,4"/>
         <CheckBox x:Name="SessionBox" Content="Session line (games, avg place, net MMR)" Checked="FeatureBox_Changed" Unchecked="FeatureBox_Changed" Margin="0,2,0,12"/>
 
         <TextBlock Text="Privacy" FontWeight="Bold" Margin="0,2,0,4"/>
         <CheckBox x:Name="ReportMatchesBox" Content="Contribute anonymous match data" Checked="ReportBox_Changed" Unchecked="ReportBox_Changed" Margin="0,2,0,2"/>
         <TextBlock Text="Helps build hero/comp stats. Battletags are hashed — never sent. No personal data leaves your PC." TextWrapping="Wrap" FontSize="11" Foreground="#FF888888" Margin="20,0,0,12"/>
 
+        <Button x:Name="PreviewButton" Content="Show preview (position without a game)" Click="PreviewButton_Click" Padding="6,4" Margin="0,0,0,6"/>
         <Button x:Name="ResetButton" Content="Reset panel position and size" Click="ResetButton_Click" Padding="6,4"/>
 
         <StackPanel x:Name="SupportPanel" Visibility="Collapsed" Margin="0,14,0,0">
