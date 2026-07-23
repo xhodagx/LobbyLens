@@ -419,6 +419,7 @@ namespace LobbyLens
 
                 string dump = string.Empty;
                 var byPid = new Dictionary<int, PlayerInfo>();
+                int myTeam = players.FirstOrDefault(x => x.IsMe)?.Team ?? -1;
                 foreach (var entity in canonical)
                 {
                     int pid = entity.GetTag(HearthDb.Enums.GameTag.PLAYER_ID);
@@ -483,7 +484,10 @@ namespace LobbyLens
                     // the native rail hover shows; exists only for opponents faced). A
                     // fresh snapshot turn is also proof of a completed combat vs this
                     // player, so it drives the encounter counter + last-fought marker.
-                    if (!p.IsMe)
+                    // Opposing team only: you never "fight" a duos teammate, and their
+                    // board snapshots would otherwise mis-drive the counter/marker.
+                    bool opposing = !p.IsMe && (myTeam < 0 || p.Team != myTeam);
+                    if (opposing)
                     {
                         var snap = Core.Game.GetBattlegroundsBoardStateFor(entity.Id);
                         if (snap?.Entities != null && snap.Entities.Length > 0 && snap.Turn != p.CompTurn)
@@ -515,7 +519,6 @@ namespace LobbyLens
                     lastNextPid = nextPid;
                     LensLog.Debug($"next opponent: pid{nextPid} ({next?.Name ?? next?.HeroCardId ?? "?"})");
                 }
-                int myTeam = players.FirstOrDefault(x => x.IsMe)?.Team ?? -1;
                 bool nextValid = next != null && (myTeam < 0 || next.Team != myTeam);
                 foreach (var pl in players) { pl.NextOpponent = nextValid && pl.Team == next.Team; }
 
