@@ -49,7 +49,14 @@ Write-Host "==> Signed (sha256 $($sha.Substring(0,16))…)"
 if ($DryRun) { Write-Host '==> DryRun: skipping uploads'; return }
 
 # --- publish package + updated meta.json -------------------------------------
+# HARD-FAIL if the key won't resolve: without -SubscriptionId this uses the active
+# az subscription, and if that's pointed elsewhere the upload would otherwise fail
+# silently and leave the package unpublished.
 $key = az storage account keys list -n $StorageAccount @subArgs --query '[0].value' -o tsv
+if (-not $key) {
+  throw "storage key for '$StorageAccount' did not resolve. Run 'az account set --subscription <id>' " +
+        "for the LobbyLens subscription, or pass -SubscriptionId, then re-run."
+}
 $pkgBlob = "releases/LobbyLens-v$version.zip"
 az storage blob upload --account-name $StorageAccount --account-key $key -c public -n $pkgBlob -f $zip `
   --content-type 'application/zip' --overwrite --output none
